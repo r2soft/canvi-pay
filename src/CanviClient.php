@@ -29,13 +29,36 @@ final class CanviClient
         private readonly ?string $userAgent = 'r2soft-canvi-php/1.x'
     ) {}
 
+    /**
+     * Envia uma requisição POST para a API Canvi.
+     *
+     * @param string $path O endpoint da API
+     * @param array $json Dados a serem enviados no corpo da requisição
+     * @param string|null $idempotencyKey Chave de idempotência para garantir que a requisição não seja repetida
+     * @return array Resposta da API
+     * @throws ApiException Em caso de erro na requisição
+     */
     public function post(string $path, array $json, ?string $idempotencyKey = null): array
     {
+        if (!is_string($path) || empty($path)) {
+            throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
+        }
         return $this->sendJson('POST', $path, $json, $idempotencyKey);
     }
 
+    /**
+     * Envia uma requisição GET para a API Canvi.
+     *
+     * @param string $path O endpoint da API
+     * @param array $query Parâmetros de query string
+     * @return array Resposta da API
+     * @throws ApiException Em caso de erro na requisição
+     */
     public function get(string $path, array $query = []): array
     {
+        if (!is_string($path) || empty($path)) {
+            throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
+        }
         $queryString = $query ? '?' . http_build_query($query) : '';
         return $this->sendJson('GET', $path . $queryString);
     }
@@ -75,44 +98,44 @@ final class CanviClient
         }
 
         $attempts = 0;
-        beginning:
-        $attempts++;
+        while ($attempts <= $this->maxRetries) {
+            $attempts++;
+            try {
+                $response = $client->sendRequest($request);
+                $status = $response->getStatusCode();
+                $raw = (string)$response->getBody();
+                $data = $this->decodeJsonSafely($raw);
 
-        try {
-            $response = $client->sendRequest($request);
-        } catch (\Throwable $e) {
-            $this->logger?->error('Canvi HTTP error', [
-                'method' => $method,
-                'path'   => $path,
-                'error'  => $e->getMessage(),
-            ]);
-            throw new ApiException('HTTP transport error', 0, $e);
+                if ($status >= 200 && $status < 300) {
+                    if (is_array($data) && array_key_exists('data', $data)) {
+                        return $data['data'];
+                    }
+                    return $data ?? [];
+                }
+
+                $ex = $this->mapApiError($status, $data, $raw);
+                $this->logger?->warning('Canvi API error', [
+                    'method' => $method,
+                    'path'   => $path,
+                    'status' => $status,
+                    'error'  => $ex->getMessage(),
+                ]);
+
+                if (!$this->shouldRetry($status, $attempts)) {
+                    throw $ex;
+                }
+                usleep($this->retryDelayMs * 1000);
+            } catch (\Throwable $e) {
+                $this->logger?->error('Canvi HTTP error', [
+                    'method' => $method,
+                    'path'   => $path,
+                    'error'  => $e->getMessage(),
+                ]);
+                throw new ApiException('HTTP transport error', 0, $e);
+            }
         }
 
-        $status = $response->getStatusCode();
-        $raw = (string)$response->getBody();
-        $data = $this->decodeJsonSafely($raw);
-
-        if ($status >= 200 && $status < 300) {
-            return is_array($data) ? $data : [];
-        }
-
-        // Mapear erros
-        $ex = $this->mapApiError($status, $data, $raw);
-        $this->logger?->warning('Canvi API error', [
-            'method' => $method,
-            'path'   => $path,
-            'status' => $status,
-            'error'  => $ex->getMessage(),
-        ]);
-
-        // Retry para 429/5xx se habilitado
-        if ($this->shouldRetry($status, $attempts)) {
-            usleep($this->retryDelayMs * 1000);
-            goto beginning;
-        }
-
-        throw $ex;
+        throw new ApiException('Max retries reached', 0);
     }
 
     private function decodeJsonSafely(string $raw): mixed
@@ -129,12 +152,13 @@ final class CanviClient
 
     private function mapApiError(int $status, ?array $data, string $raw): ApiException
     {
-        $message = $data['message'] ?? $data['error'] ?? 'Unknown error';
+        $message = $data['mensagem'] ?? $data['message'] ?? $data['error'] ?? 'Unknown error';
         $code = (int)($data['code'] ?? 0);
+        $fields = $data['erros'] ?? $data['fields'] ?? [];
 
         return match (true) {
             $status === 401 || $status === 403 => new UnauthorizedException($message, $code),
-            $status === 400 || $status === 422 => new ValidationException($message, $code, $data['fields'] ?? []),
+            $status === 400 || $status === 422 => new ValidationException($message, $code, is_array($fields) ? $fields : []),
             $status === 429                     => new RateLimitException($message, $code),
             $status >= 500                      => new ServerException($message, $code),
             default                             => new ApiException($message, $code, null, $status, $raw),

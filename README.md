@@ -1,57 +1,51 @@
-# R2Soft Canvi - Ambiente Docker (PHP 8.1 + Nginx + PHP-FPM)
+# R2Soft Canvi - Ambiente Docker (PHP 8.1)
 
-Este projeto inclui um ambiente Docker para desenvolvimento com:
-- PHP 8.1 (FPM)
-- Nginx servindo `public/`
+Este projeto inclui um ambiente Docker para desenvolvimento do pacote (SDK), com:
+- PHP 8.1 (contêiner principal)
 - Composer (container dedicado)
-- Xdebug opcional
+- Xdebug opcional (para debug CLI)
 
 Pré-requisitos
 - Docker e Docker Compose instalados
 
 Estrutura esperada
-- A aplicação web (se houver) deve expor os arquivos públicos em `public/` (ex.: `public/index.php`).
-- Para uso como biblioteca/SDK, o Nginx é opcional; ainda assim, o serviço está disponível caso você deseje expor endpoints (ex.: webhooks).
+- Uso como biblioteca/SDK (sem servidor web). Caso precise testar endpoints (ex.: webhooks), você pode usar um servidor embutido do PHP temporariamente.
 
 Comandos básicos
 
 1) Build das imagens
 - docker compose build --no-cache
 
-2) Subir os serviços
+2) Subir o serviço PHP (opcional; você pode usar apenas `run`/`exec`)
 - docker compose up -d
 
 3) Instalar dependências
 - docker compose run --rm composer install
 
-4) Acessar via navegador
-- http://localhost:8383
-
-5) Executar comandos PHP dentro do container
+4) Executar comandos PHP dentro do container
 - docker compose exec php php -v
 - docker compose exec php php -m
 - docker compose exec php php path/para/script.php
 
-6) Rodar testes (se houver PHPUnit no composer.json)
+5) Rodar testes (se houver PHPUnit no composer.json)
 - docker compose exec php ./vendor/bin/phpunit
 
-7) Logs
+6) Logs
 - docker compose logs -f php
-- docker compose logs -f nginx
 
-Xdebug
+Xdebug (CLI)
 
 Ativar Xdebug
-1. Habilite a flag de build (se necessário):
+1. Habilite a flag de build:
     - No docker-compose.yml, em build.args: `ENABLE_XDEBUG: "1"`
-    - Rebuild: `docker compose build --no-cache`
-2. Defina o modo em runtime:
+    - Rebuild do serviço PHP: `docker compose build --no-cache php`
+2. Defina o modo em runtime (no seu shell):
     - `export XDEBUG_MODE=debug`
 3. Opcional: configure host/porta (default já definido):
-    - `export XDEBUG_CLIENT_HOST=host.docker.internal`
+    - `export XDEBUG_CLIENT_HOST=host.docker.internal` (em Linux, pode usar `172.17.0.1`)
     - `export XDEBUG_CLIENT_PORT=9003`
-4. Suba os serviços:
-    - `docker compose up -d`
+4. Suba/Recrie os serviços:
+    - `docker compose up -d --force-recreate php`
 
 Dicas
 - Em Linux, `host.docker.internal` pode não resolver. Use o IP do host ou `gateway` da rede Docker:
@@ -70,3 +64,87 @@ Resolução de problemas
 
 Licença
 - Consulte o arquivo de licença do projeto.
+
+---
+
+Integração com a API Canvi (SDK)
+
+URLs Base
+- Sandbox: https://gateway-homol.service-canvi.com.br
+- Produção: sob demanda
+
+Estrutura de Resposta
+A API retorna geralmente um envelope:
+{
+  "code": "string",
+  "mensagem": "string",
+  "data": any
+}
+
+Este SDK passa a retornar diretamente o conteúdo de data quando presente (para respostas 2xx). Em erros, as mensagens priorizam os campos mensagem/code.
+
+Instalação de dependências úteis (PSR-18/17)
+Se não estiver usando um container DI que injete clientes/factories PSR, recomendamos:
+- guzzlehttp/guzzle ^7.9 (HTTP client)
+- guzzlehttp/psr7 ^2
+- http-interop/http-factory-guzzle ^1.2
+
+Exemplo de bootstrap com Guzzle
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Psr7\HttpFactory;
+use R2Soft\Canvi\CanviClient;
+
+$httpClient = new GuzzleClient([ 'timeout' => 10 ]);
+$factory = new HttpFactory();
+
+$client = new CanviClient(
+    baseUrl: 'https://gateway-homol.service-canvi.com.br',
+    apiKey: 'SEU_TOKEN',
+    httpClient: $httpClient,
+    requestFactory: $factory,
+    streamFactory: $factory,
+    maxRetries: 2,          // opcional (retry 429/5xx)
+    retryDelayMs: 300        // opcional
+);
+
+Idempotência
+Muitos endpoints aceitam idempotência. Basta enviar um UUID no terceiro parâmetro dos métodos create/post:
+$payload = [ /* ... */ ];
+$res = $client->post('/charges/boleto', $payload, '550e8400-e29b-41d4-a716-446655440000');
+
+Uso dos serviços
+// Boleto
+$boleto = new R2Soft\Canvi\Services\CanviBoletoService($client);
+$resp = $boleto->create([/*payload*/], idempotencyKey: null);
+
+// Pix Dinâmico
+$pix = new R2Soft\Canvi\Services\CanviPixService($client);
+$resp = $pix->createDynamic([/*payload*/]);
+
+Validação de Webhook
+O validador padrão suporta HMAC (sha256) ou verificação com chave pública e valida tolerância temporal.
+use R2Soft\Canvi\Webhook\DefaultWebhookValidator;
+use R2Soft\Canvi\Webhook\WebhookHandler;
+
+$validator = new DefaultWebhookValidator(
+    signatureHeader: 'X-Canvi-Signature',
+    secret: 'SEU_SEGREDO_HMAC',     // ou publicKey: "-----BEGIN PUBLIC KEY-----..."
+    publicKey: null,
+    algorithm: 'sha256',
+    tolerance: 300
+);
+
+$handler = new WebhookHandler($validator);
+$server = $_SERVER;               // cabeçalhos
+$raw = file_get_contents('php://input');
+$result = $handler->handle($server, $raw);
+if ($result['ok']) {
+    $event = $result['event'];
+    // processe
+} else {
+    http_response_code(400);
+}
+
+Observações
+- Confirme os paths exatos dos endpoints na documentação oficial.
+- Este SDK mapeia erros priorizando mensagem/code e campos de validação em erros/fields.
