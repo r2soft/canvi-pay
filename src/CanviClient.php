@@ -1,15 +1,17 @@
 <?php
+declare(strict_types=1);
+
 namespace R2Soft\Canvi;
 
 use Psr\Http\Client\ClientInterface as Psr18Client;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
-use R2Soft\Canvi\Exception\ApiException;
-use R2Soft\Canvi\Exception\UnauthorizedException;
-use R2Soft\Canvi\Exception\ValidationException;
-use R2Soft\Canvi\Exception\RateLimitException;
-use R2Soft\Canvi\Exception\ServerException;
+use R2Soft\Canvi\Exceptions\ApiException;
+use R2Soft\Canvi\Exceptions\UnauthorizedException;
+use R2Soft\Canvi\Exceptions\ValidationException;
+use R2Soft\Canvi\Exceptions\RateLimitException;
+use R2Soft\Canvi\Exceptions\ServerException;
 
 final class CanviClient
 {

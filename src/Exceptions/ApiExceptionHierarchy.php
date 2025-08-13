@@ -1,5 +1,7 @@
 <?php
-namespace R2Soft\Canvi\Exception;
+declare(strict_types=1);
+
+namespace R2Soft\Canvi\Exceptions;
 
 class ApiException extends \RuntimeException
 {

@@ -25,7 +25,7 @@ Comandos básicos
 - docker compose run --rm composer install
 
 4) Acessar via navegador
-- http://localhost:8080
+- http://localhost:8383
 
 5) Executar comandos PHP dentro do container
 - docker compose exec php php -v
@@ -65,7 +65,7 @@ Manutenção
 
 Resolução de problemas
 - Erro ao copiar *.ini no build: verifique se `php_ini_configuration.ini` e `xdebug_configuration.ini` existem na raiz do projeto.
-- 404 no Nginx: garanta que exista `public/index.php` ou ajuste `root` no arquivo `nginx/default.conf`.
+- 404 no Nginx: garanta que exista `public/index.php` ou ajuste `root` no arquivo `NginxConfigurationFile.conf`.
 - Xdebug não conecta: checar `XDEBUG_MODE`, `XDEBUG_CONFIG` e firewall local (porta 9003).
 
 Licença
