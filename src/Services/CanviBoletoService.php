@@ -11,7 +11,6 @@ final class CanviBoletoService implements ChargeServiceInterface
 
     public function create(array $payload, ?string $idempotencyKey = null): array
     {
-
         return $this->client->post('/api/v1/charges/boleto', $payload, $idempotencyKey);
     }
 

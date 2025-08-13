@@ -53,7 +53,12 @@ final class CanviClient
         if (!is_string($path) || empty($path)) {
             throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
         }
-        return $this->sendJson('POST', $path, $json, $idempotencyKey);
+        try {
+            return $this->sendJson('POST', $path, $json, $idempotencyKey);
+        }catch (\Throwable $e) {
+            throw new ApiException($e->getMessage(), $e->getCode(), $e);
+        }
+
     }
 
     /**
