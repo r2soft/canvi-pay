@@ -1,0 +1,2 @@
+<?php
+namespace R2Soft\Canvi\Contracts; interface PaymentGateway{ public function create(array $p,?string $k=null):array; public function get(string $id):array; public function cancel(string $id):array; }
