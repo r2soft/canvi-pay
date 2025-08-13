@@ -1,2 +1,6 @@
 <?php
-namespace R2Soft\Canvi\Exceptions; class CanviException extends \RuntimeException{}
+
+namespace R2Soft\Canvi\Exceptions;
+class CanviException extends \RuntimeException
+{
+}

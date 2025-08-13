@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PHP_VERSION: "8.1"
+        ENABLE_XDEBUG: "0" # altere para "1" para habilitar
+    image: r2soft-canvi-php:dev
+    container_name: canvi-php
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+      XDEBUG_CLIENT_HOST: "${XDEBUG_CLIENT_HOST:-host.docker.internal}"
+      XDEBUG_CLIENT_PORT: "${XDEBUG_CLIENT_PORT:-9003}"
+      # Opcional: sobrescreve host/port do Xdebug em runtime
+      XDEBUG_CONFIG: "client_host=${XDEBUG_CLIENT_HOST:-host.docker.internal} client_port=${XDEBUG_CLIENT_PORT:-9003}"
+    healthcheck:
+      test: ["CMD-SHELL", "php -v >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: canvi-nginx
+    depends_on:
+      - php
+    ports:
+      - "8383:80"
+    volumes:
+      - ./:/app:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+  composer:
+    image: composer:2
+    container_name: canvi-composer
+    working_dir: /app
+    volumes:
+      - ./:/app
+    entrypoint: ["composer"]
