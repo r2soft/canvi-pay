@@ -9,7 +9,7 @@ final class WebhookHandler
 
     public function handle(array $s, string $raw): array
     {
-        if (!$this->v->isValidFromServer($s, $raw)) return ['ok' => false];
+        if (!$this->v->isValid($s, $raw)) return ['ok' => false];
         return ['ok' => true, 'event' => json_decode($raw, true)];
     }
 }
