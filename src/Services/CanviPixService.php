@@ -11,8 +11,7 @@ final class CanviPixService
 
     public function createDynamic(array $payload, ?string $idempotencyKey = null): array
     {
-        // Ex.: '/charges/pix/dynamic' (ajuste para o path real)
-        return $this->client->post('/charges/pix/dynamic', $payload, $idempotencyKey);
+        return $this->client->post('/api/v1/pix/dynamic', $payload, $idempotencyKey);
     }
 
     public function get(string $chargeId): array

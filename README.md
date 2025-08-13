@@ -145,6 +145,34 @@ if ($result['ok']) {
     http_response_code(400);
 }
 
+Autenticação (geração de token)
+Caso sua integração exija gerar um token de acesso a partir de credenciais (api_key/api_secret), use o serviço de autenticação:
+
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Psr7\HttpFactory;
+use R2Soft\Canvi\CanviClient;
+use R2Soft\Canvi\Services\CanviAuthService;
+
+$http = new GuzzleClient();
+$factory = new HttpFactory();
+$client = new CanviClient(
+    baseUrl: 'https://gateway-homol.service-canvi.com.br',
+    apiKey: getenv('CANVI_API_KEY') ?: null,     // opcional; usado se não passar credenciais explicitamente
+    apiSecret: getenv('CANVI_API_SECRET') ?: null,
+    httpClient: $http,
+    requestFactory: $factory,
+    streamFactory: $factory,
+);
+
+$auth = new CanviAuthService($client, authPath: '/api/v1/auth/token'); // ajuste o path conforme a documentação
+$token = $auth->generateToken(); // usa api_key/api_secret do próprio cliente
+// ou informe credenciais explicitamente:
+// $token = $auth->generateToken(['api_key' => '...', 'api_secret' => '...']);
+
+// A partir daqui, o cliente já enviará Authorization: Bearer <token>
+$boleto = new R2Soft\Canvi\Services\CanviBoletoService($client);
+$resp = $boleto->create([/* payload */]);
+
 Observações
 - Confirme os paths exatos dos endpoints na documentação oficial.
 - Este SDK mapeia erros priorizando mensagem/code e campos de validação em erros/fields.

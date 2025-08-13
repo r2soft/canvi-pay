@@ -15,6 +15,8 @@ use R2Soft\Canvi\Exceptions\ServerException;
 
 final class CanviClient
 {
+    private ?string $accessToken = null;
+
     public function __construct(
         private readonly string $baseUrl,
         private readonly ?string $apiKey = null,
@@ -28,6 +30,14 @@ final class CanviClient
         private readonly int $retryDelayMs = 250,
         private readonly ?string $userAgent = 'r2soft-canvi-php/1.x'
     ) {}
+
+    public function setAccessToken(string $token): void
+    {
+        $this->accessToken = $token;
+    }
+
+    public function getApiKey(): ?string { return $this->apiKey; }
+    public function getApiSecret(): ?string { return $this->apiSecret; }
 
     /**
      * Envia uma requisição POST para a API Canvi.
@@ -69,14 +79,16 @@ final class CanviClient
         $requestFactory = $this->requireRequestFactory();
 
         $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+
         $headers = [
             'Accept'        => 'application/json',
             'Content-Type'  => 'application/json',
             'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
-        if ($this->apiKey) {
-            $headers['Authorization'] = 'Bearer ' . $this->apiKey;
+        $token = $this->accessToken ?? $this->apiKey;
+        if ($token) {
+            $headers['Authorization'] = 'Bearer ' . $token;
         }
         if ($idempotencyKey) {
             $headers['Idempotency-Key'] = $idempotencyKey;
@@ -150,11 +162,83 @@ final class CanviClient
         }
     }
 
+    /**
+     * Autentica no endpoint informado e armazena o access token para uso nos próximos requests.
+     * O payload e o extractor são flexíveis para adequar ao formato da API.
+     *
+     * @param string $path ex.: '/api/v1/auth/token'
+     * @param array $payload corpo da requisição (ex.: ['api_key' => '...', 'api_secret' => '...'])
+     * @param callable|null $extractor função opcional para extrair o token da resposta: fn(array $data): ?string
+     * @return string token obtido
+     * @throws ApiException quando a autenticação falhar ou o token não for encontrado
+     */
+    public function authenticate(string $path, array $payload, ?callable $extractor = null): string
+    {
+        $client = $this->requireHttpClient();
+        $requestFactory = $this->requireRequestFactory();
+        $streamFactory = $this->requireStreamFactory();
+
+        $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+
+        $headers = [
+            'Accept'        => 'application/json',
+            'Content-Type'  => 'application/json',
+            'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
+            'X-Client-Timeout' => (string)$this->timeout,
+        ];
+
+        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $body = $streamFactory->createStream($encoded);
+
+        $request = $requestFactory->createRequest('POST', $uri);
+        foreach ($headers as $k => $v) {
+            $request = $request->withHeader($k, $v);
+        }
+        $request = $request->withBody($body);
+
+        try {
+            $response = $client->sendRequest($request);
+            $status = $response->getStatusCode();
+            $raw = (string)$response->getBody();
+            $data = $this->decodeJsonSafely($raw);
+
+            if ($status >= 200 && $status < 300) {
+                $token = null;
+                if ($extractor) {
+                    $token = $extractor(is_array($data) ? $data : []);
+                }
+                if (!$token) {
+                    $arr = is_array($data) ? $data : [];
+                    $container = $arr['data'] ?? $arr;
+                    $token = $container['access_token'] ?? $container['token'] ?? null;
+                }
+                if (!is_string($token) || $token === '') {
+                    throw new ApiException('Token not found in authentication response', 0, null, $status, $raw);
+                }
+                $this->setAccessToken($token);
+                return $token;
+            }
+
+            $ex = $this->mapApiError($status, is_array($data) ? $data : null, $raw);
+            throw $ex;
+        } catch (\Throwable $e) {
+            $this->logger?->error('Canvi auth error', [
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+            if ($e instanceof ApiException) {
+                throw $e;
+            }
+            throw new ApiException('HTTP transport error (auth)', 0, $e);
+        }
+    }
+
     private function mapApiError(int $status, ?array $data, string $raw): ApiException
     {
-        $message = $data['mensagem'] ?? $data['message'] ?? $data['error'] ?? 'Unknown error';
-        $code = (int)($data['code'] ?? 0);
-        $fields = $data['erros'] ?? $data['fields'] ?? [];
+        $isArray = is_array($data);
+        $message = $isArray ? ($data['mensagem'] ?? $data['message'] ?? $data['error'] ?? 'Unknown error') : 'Unknown error';
+        $code = $isArray ? (int)($data['code'] ?? 0) : 0;
+        $fields = $isArray ? ($data['erros'] ?? $data['fields'] ?? []) : [];
 
         return match (true) {
             $status === 401 || $status === 403 => new UnauthorizedException($message, $code),
