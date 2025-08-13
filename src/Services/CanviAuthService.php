@@ -10,7 +10,7 @@ final class CanviAuthService
 {
     public function __construct(
         private readonly CanviClient $client,
-        private readonly string $authPath = '/api/v1/auth/token',
+        private readonly string $authPath = '/bt/token',
         /** @var callable|null fn(array $data): ?string */
         private $extractor = null,
     ) {}
@@ -25,13 +25,14 @@ final class CanviAuthService
     public function generateToken(?array $credentials = null): string
     {
         $payload = $credentials ?? [
-            'api_key' => $this->client->getApiKey(),
-            'api_secret' => $this->client->getApiSecret(),
+            'client_id' => $this->client->getApiKey(),
+            'private_key' => $this->client->getApiSecret(),
         ];
 
-        if (!is_array($payload) || empty($payload['api_key']) || empty($payload['api_secret'])) {
-            throw new \InvalidArgumentException('Credenciais ausentes: informe api_key e api_secret, ou configure no CanviClient.');
+        if (!is_array($payload) || empty($payload['client_id']) || empty($payload['private_key'])) {
+            throw new \InvalidArgumentException('Credenciais ausentes: informe client_id e private_key, ou configure no CanviClient.');
         }
+
 
         return $this->client->authenticate($this->authPath, $payload, $this->extractor);
     }

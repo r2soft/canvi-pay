@@ -12,6 +12,7 @@ use R2Soft\Canvi\Exceptions\UnauthorizedException;
 use R2Soft\Canvi\Exceptions\ValidationException;
 use R2Soft\Canvi\Exceptions\RateLimitException;
 use R2Soft\Canvi\Exceptions\ServerException;
+use R2Soft\Canvi\Services\CanviAuthService;
 
 final class CanviClient
 {
@@ -56,6 +57,7 @@ final class CanviClient
         try {
             return $this->sendJson('POST', $path, $json, $idempotencyKey);
         }catch (\Throwable $e) {
+            debug($e->getMessage());
             throw new ApiException($e->getMessage(), $e->getCode(), $e);
         }
 
@@ -84,14 +86,17 @@ final class CanviClient
         $requestFactory = $this->requireRequestFactory();
 
         $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
-
+        
         $headers = [
             'Accept'        => 'application/json',
             'Content-Type'  => 'application/json',
             'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
-        $token = $this->accessToken ?? $this->apiKey;
+        $authService = new CanviAuthService($this);
+
+        $token = $this->accessToken ?? $authService->generateToken();
+
         if ($token) {
             $headers['Authorization'] = 'Bearer ' . $token;
         }
@@ -105,7 +110,6 @@ final class CanviClient
             $encoded = json_encode($json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $body = $streamFactory->createStream($encoded);
         }
-
         $request = $requestFactory->createRequest($method, $uri);
         foreach ($headers as $k => $v) {
             $request = $request->withHeader($k, $v);
@@ -113,6 +117,7 @@ final class CanviClient
         if ($body) {
             $request = $request->withBody($body);
         }
+
 
         $attempts = 0;
         while ($attempts <= $this->maxRetries) {
@@ -139,6 +144,7 @@ final class CanviClient
                 ]);
 
                 if (!$this->shouldRetry($status, $attempts)) {
+                    debug($ex->getMessage());
                     throw $ex;
                 }
                 usleep($this->retryDelayMs * 1000);
@@ -148,6 +154,7 @@ final class CanviClient
                     'path'   => $path,
                     'error'  => $e->getMessage(),
                 ]);
+                debug($e->getMessage());
                 throw new ApiException('HTTP transport error', 0, $e);
             }
         }
@@ -199,6 +206,7 @@ final class CanviClient
         foreach ($headers as $k => $v) {
             $request = $request->withHeader($k, $v);
         }
+
         $request = $request->withBody($body);
 
         try {
@@ -206,7 +214,6 @@ final class CanviClient
             $status = $response->getStatusCode();
             $raw = (string)$response->getBody();
             $data = $this->decodeJsonSafely($raw);
-
             if ($status >= 200 && $status < 300) {
                 $token = null;
                 if ($extractor) {

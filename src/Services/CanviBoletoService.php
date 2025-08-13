@@ -11,21 +11,21 @@ final class CanviBoletoService implements ChargeServiceInterface
 
     public function create(array $payload, ?string $idempotencyKey = null): array
     {
-        return $this->client->post('/api/v1/charges/boleto', $payload, $idempotencyKey);
+        return $this->client->post('/bt/boleto', $payload, $idempotencyKey);
     }
 
     public function get(string $chargeId): array
     {
-        return $this->client->get("/api/v1/charges/{$chargeId}");
+        return $this->client->get("/bt/consulta_boleto/{$chargeId}");
     }
 
     public function cancel(string $chargeId): array
     {
-        return $this->client->post("/api/v1/charges/{$chargeId}/cancel", []);
+        return $this->client->post("/bt/cancelar_boleto/{$chargeId}/cancel", []);
     }
 
     public function list(array $filters = []): array
     {
-        return $this->client->get('/api/v1/charges/boleto', $filters);
+        return $this->client->get('/bt/consulta_boletos', $filters);
     }
 }
