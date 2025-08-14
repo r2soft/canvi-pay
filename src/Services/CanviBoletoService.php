@@ -7,7 +7,7 @@ use R2Soft\Canvi\CanviClient;
 
 final class CanviBoletoService implements ChargeServiceInterface
 {
-    public function __construct(private readonly CanviClient $client) {}
+    public function __construct(private CanviClient $client) {}
 
     public function create(array $payload, ?string $idempotencyKey = null): array
     {

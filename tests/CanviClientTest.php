@@ -70,7 +70,13 @@ final class CanviClientTest extends TestCase
 
 final class FakeHttpClient implements Psr18Client
 {
-    public function __construct(private ResponseInterface $response) {}
+    private $response;
+    
+    public function __construct(ResponseInterface $response) 
+    {
+        $this->response = $response;
+    }
+    
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
         return $this->response;
@@ -102,7 +108,18 @@ final class FakeHttpFactory implements RequestFactoryInterface, StreamFactoryInt
 
 final class FakeRequest implements RequestInterface
 {
-    public function __construct(private string $method, private string $uri, private array $headers = [], private ?StreamInterface $body = null) {}
+    private $method;
+    private $uri;
+    private $headers;
+    private $body;
+    
+    public function __construct(string $method, string $uri, array $headers = [], ?StreamInterface $body = null) 
+    {
+        $this->method = $method;
+        $this->uri = $uri;
+        $this->headers = $headers;
+        $this->body = $body;
+    }
 
     public function getRequestTarget(): string { return $this->uri; }
     public function withRequestTarget(string $requestTarget): RequestInterface { $new = clone $this; $new->uri = (string)$requestTarget; return $new; }
@@ -128,7 +145,16 @@ final class FakeRequest implements RequestInterface
 
 final class FakeResponse implements ResponseInterface
 {
-    public function __construct(private int $status, private string $body, private array $headers = ['Content-Type' => ['application/json']]) {}
+    private $status;
+    private $body;
+    private $headers;
+    
+    public function __construct(int $status, string $body, array $headers = ['Content-Type' => ['application/json']]) 
+    {
+        $this->status = $status;
+        $this->body = $body;
+        $this->headers = $headers;
+    }
     public function getProtocolVersion(): string {return '1.1';}
     public function withProtocolVersion(string $version): ResponseInterface {return $this;}
     public function getHeaders(): array {return $this->headers;}
@@ -147,7 +173,12 @@ final class FakeResponse implements ResponseInterface
 
 final class FakeStream implements StreamInterface
 {
-    public function __construct(private string $content) {}
+    private $content;
+    
+    public function __construct(string $content) 
+    {
+        $this->content = $content;
+    }
     public function __toString(): string {return $this->content;}
     public function close(): void {}
     public function detach(){return null;}
