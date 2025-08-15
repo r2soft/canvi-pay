@@ -1,4 +1,4 @@
-# R2Soft Canvi - Ambiente Docker (PHP 8.1)
+# R2Soft Canvi - Ambiente Docker (PHP 8.0)
 
 Este projeto inclui um ambiente Docker para desenvolvimento do pacote (SDK), com:
 - PHP 8.0 (contêiner principal)
