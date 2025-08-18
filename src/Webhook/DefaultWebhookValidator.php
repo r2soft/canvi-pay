@@ -36,39 +36,40 @@ final class DefaultWebhookValidator
 
     public function isValid(array $server, string $rawBody): bool
     {
-        $headerName = 'HTTP_' . strtoupper(str_replace('-', '_', $this->signatureHeader));
-        $sigHeader = $server[$headerName] ?? null;
-        if (!$sigHeader) return false;
+        $signatureHeader = $server['HTTP_' . str_replace('-', '_', strtoupper($this->signatureHeader))] ?? null;
+        if (!$signatureHeader) return false;
 
-        // Formato esperado: t=timestamp, v1=<assinatura> (HMAC) ou sig=<base64> (assimétrico)
-        $parts = $this->parseSignatureHeader($sigHeader);
-        $timestamp = $parts['t'] ?? null;
-
-        if (!$timestamp || !$this->isWithinTolerance((int)$timestamp)) {
-            return false;
+        // Espera-se formato: t=<timestamp>,v1=<assinatura>
+        // Ex.: "t=1723651200,v1=abcdef..."
+        $parts = [];
+        foreach (explode(',', $signatureHeader) as $p) {
+            [$k, $v] = array_map('trim', explode('=', $p, 2) + [null, null]);
+            if ($k && $v) $parts[$k] = $v;
         }
 
+        $ts = isset($parts['t']) ? (int)$parts['t'] : null;
+        // Aceita tanto 'v1' quanto 'sig' como prefixo da assinatura
+        $sig = $parts['v1'] ?? $parts['sig'] ?? null;
+
+        if (!$ts || !$sig) return false;
+        if (abs(time() - $ts) > $this->tolerance) return false;
+
         if ($this->secret) {
-            // Base string inclui timestamp para proteção contra replay
-            $base = $timestamp . '.' . $rawBody;
-            $calc = hash_hmac($this->algorithm, $base, $this->secret);
-            $provided = $parts['v1'] ?? null;
-            return $provided && hash_equals($calc, $provided);
+            $signed = $ts . '.' . $rawBody;
+            $calc = hash_hmac($this->algorithm, $signed, $this->secret);
+            return hash_equals($calc, $sig);
         }
 
         if ($this->publicKey) {
-            $signature = $parts['sig'] ?? null;
-            if (!$signature) return false;
-            $data = $timestamp . '.' . $rawBody;
-            $sigRaw = base64_decode($signature, true);
-            if ($sigRaw === false) return false;
-
-            $ok = openssl_verify($data, $sigRaw, $this->publicKey, OPENSSL_ALGO_SHA256);
+            $data = $ts . '.' . $rawBody;
+            // A assinatura já está em base64, então não precisamos de hex2bin
+            $ok = openssl_verify($data, base64_decode($sig), $this->publicKey, OPENSSL_ALGO_SHA256);
             return $ok === 1;
         }
 
         return false;
     }
+
 
     private function parseSignatureHeader(string $header): array
     {

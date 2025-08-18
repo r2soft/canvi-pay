@@ -38,7 +38,7 @@ class CanviAuthService
         // Handle different constructor signatures
         if (is_string($clientIdOrPath) && strpos($clientIdOrPath, '/') === 0) {
             // Second parameter is the auth path
-            $this->authPath = ltrim($clientIdOrPath, '/');
+            $this->authPath = $clientIdOrPath; // Mantém a barra inicial
             $this->clientId = null;
             $this->clientSecret = null;
             $this->extractor = is_callable($clientSecretOrExtractor) ? $clientSecretOrExtractor : null;
@@ -46,7 +46,7 @@ class CanviAuthService
             // Standard constructor with client ID/secret
             $this->clientId = $clientIdOrPath;
             $this->clientSecret = is_string($clientSecretOrExtractor) ? $clientSecretOrExtractor : null;
-            $this->authPath = ltrim($authPath, '/');
+            $this->authPath = $authPath; // Já vem com a barra inicial do parâmetro padrão
             $this->extractor = is_callable($clientSecretOrExtractor) ? $clientSecretOrExtractor : null;
         }
     }
@@ -61,70 +61,98 @@ class CanviAuthService
      */
     public function generateToken(?array $credentials = null): string
     {
-        try {
-            // Se credenciais forem fornecidas, usa-as
-            if ($credentials !== null) {
-                if (!isset($credentials['client_id'], $credentials['private_key'])) {
-                    $error = 'Credenciais inválidas: é necessário fornecer client_id e private_key';
-                    $this->logger?->error($error);
-                    throw new \InvalidArgumentException($error);
-                }
-                
-                $path = $this->authPath;
-                if (strpos($path, '/') === 0) {
-                    $path = ltrim($path, '/');
-                }
-                
-                return $this->client->authenticate(
-                    $path,
-                    [
-                        'client_id' => $credentials['client_id'],
-                        'private_key' => $credentials['private_key']
-                    ],
-                    $this->extractor
-                );
+        // Se credenciais forem fornecidas, usa-as
+        if ($credentials !== null) {
+            if (!isset($credentials['client_id'], $credentials['private_key'])) {
+                $error = 'Credenciais inválidas: é necessário fornecer client_id e private_key';
+                $this->logger?->error($error);
+                throw new \InvalidArgumentException($error);
             }
             
-            // Se não houver credenciais fornecidas, tenta obter do cliente
-            if (method_exists($this->client, 'getApiKey') && method_exists($this->client, 'getApiSecret')) {
-                $apiKey = $this->client->getApiKey();
-                $apiSecret = $this->client->getApiSecret();
-                
-                if (empty($apiKey) || empty($apiSecret)) {
-                    $error = 'Credenciais não configuradas no cliente';
-                    $this->logger?->error($error);
-                    throw new \InvalidArgumentException($error);
-                }
-                
-                $path = $this->authPath;
-                if (strpos($path, '/') === 0) {
-                    $path = ltrim($path, '/');
-                }
-                
-                return $this->client->authenticate(
-                    $path,
-                    [
-                        'client_id' => $apiKey,
-                        'private_key' => $apiSecret
-                    ],
-                    $this->extractor
-                );
+            $path = $this->authPath;
+            // Garante que o caminho comece com '/' para consistência
+            if (strpos($path, '/') !== 0) {
+                $path = '/' . $path;
             }
             
-            throw new \InvalidArgumentException('Não foi possível obter as credenciais de autenticação');
+            $authData = [
+                'client_id' => $credentials['client_id'],
+                'private_key' => $credentials['private_key']
+            ];
             
-        } catch (\Exception $e) {
-            $this->logger?->error('Falha na autenticação', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            $this->logger?->debug('Autenticando com credenciais fornecidas', [
+                'path' => $path,
+                'auth_data' => array_merge($authData, ['private_key' => '***'])
             ]);
             
-            if ($e instanceof ApiException) {
-                throw $e;
+            try {
+                return $this->client->authenticate(
+                    $path,
+                    $authData,
+                    $this->extractor
+                );
+            } catch (\Exception $e) {
+                $this->logger?->error('Falha na autenticação', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                
+                if ($e instanceof ApiException) {
+                    throw $e;
+                }
+                
+                throw new ApiException('Falha na autenticação: ' . $e->getMessage(), $e->getCode(), $e);
+            }
+        }
+        
+        // Se não houver credenciais fornecidas, tenta obter do cliente
+        if (method_exists($this->client, 'getApiKey') && method_exists($this->client, 'getApiSecret')) {
+            $apiKey = $this->client->getApiKey();
+            $apiSecret = $this->client->getApiSecret();
+            
+            if (empty($apiKey) || empty($apiSecret)) {
+                $error = 'Credenciais não configuradas no cliente';
+                $this->logger?->error($error);
+                throw new \InvalidArgumentException($error);
             }
             
-            throw new ApiException('Falha na autenticação: ' . $e->getMessage(), $e->getCode(), $e);
+            $path = $this->authPath;
+            // Garante que o caminho comece com '/' para consistência
+            if (strpos($path, '/') !== 0) {
+                $path = '/' . $path;
+            }
+            
+            $authData = [
+                'client_id' => $apiKey,
+                'private_key' => $apiSecret
+            ];
+            
+            $this->logger?->debug('Autenticando com credenciais padrão', [
+                'path' => $path,
+                'auth_data' => array_merge($authData, ['private_key' => '***'])
+            ]);
+            
+            try {
+                return $this->client->authenticate(
+                    $path,
+                    $authData,
+                    $this->extractor
+                );
+            } catch (\Exception $e) {
+                $this->logger?->error('Falha na autenticação', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                
+                if ($e instanceof ApiException) {
+                    throw $e;
+                }
+                
+                throw new ApiException('Falha na autenticação: ' . $e->getMessage(), $e->getCode(), $e);
+            }
         }
+        
+        throw new \InvalidArgumentException('Não foi possível obter as credenciais de autenticação');
     }
     
     /**

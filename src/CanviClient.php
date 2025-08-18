@@ -12,7 +12,7 @@ use Psr\Log\LoggerInterface;
 use R2Soft\Canvi\Contracts\CanviClientInterface;
 use R2Soft\Canvi\Exceptions\ApiException;
 use R2Soft\Canvi\Exceptions\UnauthorizedException;
-use R2Soft\Canvi\Exceptions\ValidationException;
+use R2Soft\Canvi\Exceptions\ValidationException as FullValidationException;
 use R2Soft\Canvi\Exceptions\RateLimitException;
 use R2Soft\Canvi\Exceptions\ServerException;
 use R2Soft\Canvi\Exceptions\TokenStorageException;
@@ -30,18 +30,19 @@ class CanviClient implements CanviClientInterface
     private ?StreamFactoryInterface $streamFactory = null;
 
     public function __construct(
-        private string $baseUrl,
-        private ?string $apiKey = null,
-        private ?string $apiSecret = null,
-        private int $timeout = 10,
+        private string           $baseUrl,
+        private ?string          $apiKey = null,
+        private ?string          $apiSecret = null,
+        private int              $timeout = 10,
         private ?LoggerInterface $logger = null,
-        ?Psr18Client $httpClient = null,
+        ?Psr18Client             $httpClient = null,
         ?RequestFactoryInterface $requestFactory = null,
-        ?StreamFactoryInterface $streamFactory = null,
-        private int $maxRetries = 0,
-        private int $retryDelayMs = 250,
-        private ?string $userAgent = 'r2soft-canvi-php/1.x'
-    ) {
+        ?StreamFactoryInterface  $streamFactory = null,
+        private int              $maxRetries = 0,
+        private int              $retryDelayMs = 250,
+        private ?string          $userAgent = 'r2soft-canvi-php/1.x'
+    )
+    {
         $this->httpClient = $httpClient;
         $this->requestFactory = $requestFactory;
         $this->streamFactory = $streamFactory;
@@ -52,23 +53,23 @@ class CanviClient implements CanviClientInterface
     {
         return $this->baseUrl;
     }
-    
+
     /**
      * Obtém a chave da API
      */
-    public function getApiKey(): ?string 
-    { 
-        return $this->apiKey; 
+    public function getApiKey(): ?string
+    {
+        return $this->apiKey;
     }
-    
+
     /**
      * Obtém o segredo da API
      */
-    public function getApiSecret(): ?string 
-    { 
-        return $this->apiSecret; 
+    public function getApiSecret(): ?string
+    {
+        return $this->apiSecret;
     }
-    
+
     /**
      * @inheritDoc
      */
@@ -129,10 +130,10 @@ class CanviClient implements CanviClientInterface
             throw new ApiException('Erro inesperado: ' . $e->getMessage(), $e->getCode() ?: 500, $e);
         }
     }
-    
+
     /**
      * Autentica no endpoint informado e armazena o access token para uso nos próximos requests.
-     * 
+     *
      * @param string $path Endpoint de autenticação
      * @param array $payload Dados de autenticação
      * @param callable|null $extractor Função para extrair o token da resposta
@@ -145,35 +146,35 @@ class CanviClient implements CanviClientInterface
             $response = $this->request('POST', $path, [
                 'json' => $payload
             ]);
-            
-            $data = json_decode((string) $response->getBody(), true);
-            
+
+            $data = json_decode((string)$response->getBody(), true);
+
             if ($extractor) {
                 $token = $extractor($data);
             } else {
                 $token = $data['access_token'] ?? $data['token'] ?? null;
-                
+
                 if ($token === null) {
                     throw new ApiException('Token não encontrado na resposta da API');
                 }
-                
+
                 if (isset($data['expires_in'])) {
-                    $this->setAccessToken($token, (int) $data['expires_in']);
+                    $this->setAccessToken($token, (int)$data['expires_in']);
                 } else {
                     $this->setAccessToken($token);
                 }
             }
-            
+
             if (empty($token)) {
                 throw new ApiException('Token não encontrado na resposta da API');
             }
-            
+
             return $token;
         } catch (\Exception $e) {
             throw new ApiException('Falha na autenticação: ' . $e->getMessage(), $e->getCode(), $e);
         }
     }
-    
+
     /**
      * Obtém a instância do TokenStorage
      */
@@ -186,13 +187,13 @@ class CanviClient implements CanviClientInterface
                 $this->logger
             );
         }
-        
+
         return $this->tokenStorage;
     }
-    
+
     /**
      * Define o token de acesso e seu tempo de expiração
-     * 
+     *
      * @param string $token Token de acesso
      * @param int|null $expiresIn Tempo de expiração em segundos a partir de agora. Se não informado, usa o valor padrão de 7 dias.
      */
@@ -262,16 +263,29 @@ class CanviClient implements CanviClientInterface
      */
     public function post(string $path, array $json, ?string $idempotencyKey = null): array
     {
+        $this->logger?->debug('post method called', [
+            'path' => $path,
+            'json' => $json,
+            'idempotencyKey' => $idempotencyKey
+        ]);
+        
         if (!is_string($path) || empty($path)) {
             throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
         }
         try {
-            return $this->sendJson('POST', $path, $json, $idempotencyKey);
-        }catch (\Throwable $e) {
+            $result = $this->sendJson('POST', $path, $json, $idempotencyKey);
+            $this->logger?->debug('post method completed successfully', ['result' => $result]);
+            return $result;
+        } catch (\R2Soft\Canvi\Exceptions\ValidationException $e) {
+            // Propaga exceções de validação sem encapsular
+            throw $e;
+        } catch (ApiException $e) {
+            // Deixa exceções da hierarquia ApiException passarem sem encapsular
+            throw $e;
+        } catch (\Throwable $e) {
             $this->logger?->error('API request failed: ' . $e->getMessage(), ['exception' => $e]);
             throw new ApiException($e->getMessage(), $e->getCode(), $e);
         }
-
     }
 
     /**
@@ -287,8 +301,16 @@ class CanviClient implements CanviClientInterface
         if (!is_string($path) || empty($path)) {
             throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
         }
-        $queryString = $query ? '?' . http_build_query($query) : '';
-        return $this->sendJson('GET', $path . $queryString);
+        try {
+            $queryString = $query ? '?' . http_build_query($query) : '';
+            return $this->sendJson('GET', $path . $queryString);
+        } catch (ApiException $e) {
+            // Deixa exceções da hierarquia ApiException passarem sem encapsular
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->logger?->error('API request failed: ' . $e->getMessage(), ['exception' => $e]);
+            throw new ApiException($e->getMessage(), $e->getCode(), $e);
+        }
     }
 
     private function sendJson(string $method, string $path, ?array $json = null, ?string $idempotencyKey = null): array
@@ -299,12 +321,12 @@ class CanviClient implements CanviClientInterface
         $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
 
         $headers = [
-            'Accept'        => 'application/json',
-            'Content-Type'  => 'application/json',
-            'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+            'User-Agent' => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
-        
+
         // Skip token for auth requests to prevent infinite loops
         if (!str_ends_with($path, '/token') && !str_ends_with($path, '/token/')) {
             // Tenta carregar o token do armazenamento
@@ -362,15 +384,15 @@ class CanviClient implements CanviClientInterface
                     return $data ?? [];
                 }
 
-                $ex = $this->mapApiError($status, $data, $raw);
+                $ex = $this->mapApiError($data, $status, $path);
                 $this->logger?->warning('Canvi API error', [
                     'method' => $method,
-                    'path'   => $path,
+                    'path' => $path,
                     'status' => $status,
-                    'error'  => $ex->getMessage(),
+                    'error' => $ex->getMessage(),
                 ]);
 
-                if (!$this->shouldRetry($status, $attempts)) {
+                if (!$this->shouldRetry($response)) {
                     $this->logger?->error('API request failed after retries', [
                         'error' => $ex->getMessage(),
                         'status' => $status,
@@ -379,23 +401,29 @@ class CanviClient implements CanviClientInterface
                     throw $ex;
                 }
                 usleep($this->retryDelayMs * 1000);
+            } catch (\R2Soft\Canvi\Exceptions\ValidationException $e) {
+                // Propaga exceções de validação sem encapsular
+                throw $e;
+            } catch (ApiException $e) {
+                // Deixa exceções da hierarquia ApiException passarem sem encapsular
+                throw $e;
             } catch (\Throwable $e) {
                 $this->logger?->error('Canvi HTTP error', [
                     'method' => $method,
-                    'path'   => $path,
-                    'error'  => $e->getMessage(),
-                    'trace'  => $e->getTraceAsString()
+                    'path' => $path,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
-                
+
                 // Log the response details if available
                 if (isset($response)) {
                     $this->logger?->error('Response details', [
                         'status' => $response->getStatusCode(),
                         'headers' => $response->getHeaders(),
-                        'body' => (string) $response->getBody()
+                        'body' => (string)$response->getBody()
                     ]);
                 }
-                
+
                 throw new ApiException('HTTP transport error: ' . $e->getMessage(), 0, $e);
             }
         }
@@ -416,33 +444,69 @@ class CanviClient implements CanviClientInterface
     }
 
 
-    private function mapApiError(int $status, ?array $data, string $raw): ApiException
+    /**
+     * Converte payload de erro da API em exceções específicas.
+     * - 400 com {mensagem, erros} => ValidationException
+     * - outros => ApiException genérica com details
+     */
+    private function mapApiError(array $data, int $status, ?string $path = null): \Throwable
     {
-        $isArray = is_array($data);
-        $message = $isArray ? ($data['mensagem'] ?? $data['message'] ?? $data['error'] ?? 'Erro desconhecido') : 'Erro desconhecido';
-        $code = $isArray ? (int)($data['code'] ?? 0) : 0;
-        $fields = $isArray ? ($data['erros'] ?? $data['fields'] ?? []) : [];
+        $msg   = $data['mensagem'] ?? $data['message'] ?? 'Erro na requisição';
+        $code  = $data['code'] ?? $data['codigo'] ?? null;
+        $erros = isset($data['erros']) && is_array($data['erros']) ? $data['erros'] : [];
 
-        // Garante que $fields seja sempre um array
-        if (!is_array($fields)) {
-            $fields = [];
+        $this->logger?->debug('mapApiError called', [
+            'status' => $status,
+            'code' => $code,
+            'has_erros' => !empty($erros),
+            'data' => $data
+        ]);
+
+        // Heurística: se tem erros de campo ou é um código de validação, trate como validação
+        $isValidationError = ($status === 400 && !empty($erros)) || 
+                            ($code && (stripos((string)$code, 'VAL') === 0 || stripos((string)$msg, 'valida') !== false));
+        
+        if ($isValidationError) {
+            $this->logger?->debug('Criando ValidationException', [
+                'message' => $msg,
+                'erros' => $erros,
+                'code' => $code,
+                'status' => $status
+            ]);
+            
+            // Cria a exceção de validação com a mensagem e erros
+            $exception = new Exceptions\ValidationException(
+                $msg,
+                $erros,
+                $status, // Usa o status HTTP fornecido
+                is_string($data) ? $data : json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            );
+            
+            // Se a exceção tiver um método setCode, define o código original
+            if (method_exists($exception, 'setCode') && $code) {
+                $this->logger?->debug('Chamando setCode no ValidationException', ['code' => $code]);
+                $exception->setCode($code);
+            }
+            
+            $this->logger?->debug('Retornando ValidationException', [
+                'class' => get_class($exception),
+                'code' => $exception->getCode(),
+                'message' => $exception->getMessage(),
+                'has_errors' => !empty($erros)
+            ]);
+            
+            return $exception;
         }
 
-        return match (true) {
-            $status === 401 || $status === 403 => new UnauthorizedException($message, $code),
-            $status === 400 || $status === 422 => new ValidationException($message, $code, $fields),
-            $status === 429 => new RateLimitException($message, $code),
-            $status >= 500 => new ServerException($message, $code),
-            default => new ApiException($message, $code, null, $status, $raw),
-        };
-    }
-
-    private function shouldRetry(int $status, int $attempts): bool
-    {
-        if ($this->maxRetries <= 0) return false;
-        if ($attempts > $this->maxRetries + 1) return false;
-
-        return $status === 429 || ($status >= 500 && $status <= 599);
+        // Fallback: ApiException com contexto
+        $ex = new ApiException($msg, $status);
+        if (method_exists($ex, 'setData')) {
+            $ex->setData($data);
+        }
+        if (method_exists($ex, 'setPath') && $path) {
+            $ex->setPath($path);
+        }
+        return $ex;
     }
 
     private function requireHttpClient(): Psr18Client
@@ -467,5 +531,16 @@ class CanviClient implements CanviClientInterface
             throw new \RuntimeException('StreamFactory (PSR-17) não fornecida');
         }
         return $this->streamFactory;
+    }
+
+    /**
+     * Decide retry apenas para 429/5xx (e nunca para 4xx de validação).
+     */
+    private function shouldRetry(ResponseInterface $r): bool
+    {
+        $code = $r->getStatusCode();
+        if ($code === 429 || $code === 408) return true;
+        if ($code >= 500) return true;
+        return false;
     }
 }
