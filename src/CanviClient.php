@@ -19,17 +19,17 @@ final class CanviClient
     private ?string $accessToken = null;
 
     public function __construct(
-        private readonly string $baseUrl,
-        private readonly ?string $apiKey = null,
-        private readonly ?string $apiSecret = null,
-        private readonly int $timeout = 10,
-        private readonly ?LoggerInterface $logger = null,
-        private readonly ?Psr18Client $httpClient = null,
-        private readonly ?RequestFactoryInterface $requestFactory = null,
-        private readonly ?StreamFactoryInterface $streamFactory = null,
-        private readonly int $maxRetries = 0,
-        private readonly int $retryDelayMs = 250,
-        private readonly ?string $userAgent = 'r2soft-canvi-php/1.x'
+        private string $baseUrl,
+        private ?string $apiKey = null,
+        private ?string $apiSecret = null,
+        private int $timeout = 10,
+        private ?LoggerInterface $logger = null,
+        private ?Psr18Client $httpClient = null,
+        private ?RequestFactoryInterface $requestFactory = null,
+        private ?StreamFactoryInterface $streamFactory = null,
+        private int $maxRetries = 0,
+        private int $retryDelayMs = 250,
+        private ?string $userAgent = 'r2soft-canvi-php/1.x'
     ) {}
 
     public function setAccessToken(string $token): void
@@ -86,7 +86,7 @@ final class CanviClient
         $requestFactory = $this->requireRequestFactory();
 
         $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
-        
+
         $headers = [
             'Accept'        => 'application/json',
             'Content-Type'  => 'application/json',

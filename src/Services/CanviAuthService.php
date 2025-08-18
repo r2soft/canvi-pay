@@ -9,8 +9,8 @@ use R2Soft\Canvi\Exceptions\ApiException;
 final class CanviAuthService
 {
     public function __construct(
-        private readonly CanviClient $client,
-        private readonly string $authPath = '/bt/token',
+        private CanviClient $client,
+        private string $authPath = '/bt/token',
         /** @var callable|null fn(array $data): ?string */
         private $extractor = null,
     ) {}
