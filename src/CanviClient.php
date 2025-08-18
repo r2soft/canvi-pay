@@ -12,29 +12,100 @@ use R2Soft\Canvi\Exceptions\UnauthorizedException;
 use R2Soft\Canvi\Exceptions\ValidationException;
 use R2Soft\Canvi\Exceptions\RateLimitException;
 use R2Soft\Canvi\Exceptions\ServerException;
+use R2Soft\Canvi\Exceptions\TokenStorageException;
 use R2Soft\Canvi\Services\CanviAuthService;
+use R2Soft\Canvi\Services\TokenStorage;
 
 final class CanviClient
 {
     private ?string $accessToken = null;
+    private ?TokenStorage $tokenStorage = null;
+    private const TOKEN_EXPIRES_IN = 604800; // 7 dias em segundos
+    private const TOKEN_RENEW_BEFORE = 3600; // 1 hora antes de expirar
 
     public function __construct(
-        private string $baseUrl,
-        private ?string $apiKey = null,
-        private ?string $apiSecret = null,
-        private int $timeout = 10,
-        private ?LoggerInterface $logger = null,
-        private ?Psr18Client $httpClient = null,
-        private ?RequestFactoryInterface $requestFactory = null,
-        private ?StreamFactoryInterface $streamFactory = null,
-        private int $maxRetries = 0,
-        private int $retryDelayMs = 250,
-        private ?string $userAgent = 'r2soft-canvi-php/1.x'
+        private readonly string $baseUrl,
+        private readonly ?string $apiKey = null,
+        private readonly ?string $apiSecret = null,
+        private readonly int $timeout = 10,
+        private readonly ?LoggerInterface $logger = null,
+        private readonly ?Psr18Client $httpClient = null,
+        private readonly ?RequestFactoryInterface $requestFactory = null,
+        private readonly ?StreamFactoryInterface $streamFactory = null,
+        private readonly int $maxRetries = 0,
+        private readonly int $retryDelayMs = 250,
+        private readonly ?string $userAgent = 'r2soft-canvi-php/1.x'
     ) {}
 
-    public function setAccessToken(string $token): void
+    /**
+     * Obtém a instância do TokenStorage
+     */
+    private function getTokenStorage(): TokenStorage
+    {
+        if ($this->tokenStorage === null) {
+            $this->tokenStorage = new TokenStorage();
+        }
+        return $this->tokenStorage;
+    }
+
+    /**
+     * Define o token de acesso e seu tempo de expiração
+     *
+     * @param string $token Token de acesso
+     * @param int $expiresIn Tempo de expiração em segundos a partir de agora
+     */
+    public function setAccessToken(string $token, int $expiresIn = null): void
     {
         $this->accessToken = $token;
+        $expiresIn = $expiresIn ?? self::TOKEN_EXPIRES_IN;
+
+        try {
+            $this->getTokenStorage()->saveToken($token, $expiresIn);
+        } catch (TokenStorageException $e) {
+            // Loga o erro, mas não interrompe o fluxo
+            $this->logger?->error('Falha ao salvar o token: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Carrega o token do armazenamento
+     */
+    private function loadToken(): ?string
+    {
+        try {
+            $tokenData = $this->getTokenStorage()->loadToken();
+            if ($tokenData && isset($tokenData['token'])) {
+                $this->accessToken = $tokenData['token'];
+                return $this->accessToken;
+            }
+        } catch (TokenStorageException $e) {
+            $this->logger?->error('Falha ao carregar o token: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Verifica se o token atual está expirado ou próximo de expirar
+     */
+    private function isTokenExpired(): bool
+    {
+        try {
+            $tokenData = $this->getTokenStorage()->loadToken();
+
+            // Se não há token ou dados de expiração, considera expirado
+            if (!$tokenData || !isset($tokenData['expires_at'])) {
+                return true;
+            }
+
+            // Verifica se o token expirou ou está próximo de expirar
+            $currentTime = time();
+            return $tokenData['expires_at'] <= ($currentTime + self::TOKEN_RENEW_BEFORE);
+
+        } catch (TokenStorageException $e) {
+            $this->logger?->error('Erro ao verificar expiração do token: ' . $e->getMessage());
+            return true; // Em caso de erro, considera expirado para forçar renovação
+        }
     }
 
     public function getApiKey(): ?string { return $this->apiKey; }
@@ -93,9 +164,16 @@ final class CanviClient
             'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
-        $authService = new CanviAuthService($this);
+        // Tenta carregar o token do armazenamento
+        $token = $this->loadToken();
 
-        $token = $this->accessToken ?? $authService->generateToken();
+        // Se não há token ou está expirado, gera um novo
+        if ($this->isTokenExpired() || $token === null) {
+            $authService = new CanviAuthService($this);
+            $token = $authService->generateToken();
+            // O token e seu tempo de expiração são definidos pelo método generateToken
+            // através de setAccessToken
+        }
 
         if ($token) {
             $headers['Authorization'] = 'Bearer ' . $token;
@@ -193,9 +271,9 @@ final class CanviClient
         $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
 
         $headers = [
-            'Accept'        => 'application/json',
-            'Content-Type'  => 'application/json',
-            'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
+            'Accept'           => 'application/json',
+            'Content-Type'     => 'application/json',
+            'User-Agent'       => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
 
