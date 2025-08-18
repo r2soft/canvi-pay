@@ -419,16 +419,21 @@ class CanviClient implements CanviClientInterface
     private function mapApiError(int $status, ?array $data, string $raw): ApiException
     {
         $isArray = is_array($data);
-        $message = $isArray ? ($data['mensagem'] ?? $data['message'] ?? $data['error'] ?? 'Unknown error') : 'Unknown error';
+        $message = $isArray ? ($data['mensagem'] ?? $data['message'] ?? $data['error'] ?? 'Erro desconhecido') : 'Erro desconhecido';
         $code = $isArray ? (int)($data['code'] ?? 0) : 0;
         $fields = $isArray ? ($data['erros'] ?? $data['fields'] ?? []) : [];
 
+        // Garante que $fields seja sempre um array
+        if (!is_array($fields)) {
+            $fields = [];
+        }
+
         return match (true) {
             $status === 401 || $status === 403 => new UnauthorizedException($message, $code),
-            $status === 400 || $status === 422 => new ValidationException($message, $code, is_array($fields) ? $fields : []),
-            $status === 429                     => new RateLimitException($message, $code),
-            $status >= 500                      => new ServerException($message, $code),
-            default                             => new ApiException($message, $code, null, $status, $raw),
+            $status === 400 || $status === 422 => new ValidationException($message, $code, $fields),
+            $status === 429 => new RateLimitException($message, $code),
+            $status >= 500 => new ServerException($message, $code),
+            default => new ApiException($message, $code, null, $status, $raw),
         };
     }
 
