@@ -9,6 +9,16 @@ use R2Soft\Canvi\Exceptions\ApiException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Serviço de autenticação para a API Canvi.
+ *
+ * Esta classe é responsável por gerenciar a autenticação na API Canvi,
+ * incluindo a geração e renovação de tokens de acesso.
+ *
+ * @package R2Soft\Canvi\Services
+ * @author R2Soft <dev@r2soft.com.br>
+ * @version 1.0.0
+ */
 class CanviAuthService
 {
     private CanviClientInterface $client;
@@ -19,11 +29,41 @@ class CanviAuthService
     private $extractor;
 
     /**
+     * Constrói uma nova instância do serviço de autenticação.
+     *
+     * Este construtor suporta duas assinaturas diferentes:
+     * 1. Com credenciais explícitas:
+     *    new CanviAuthService($client, 'client-id', 'client-secret', '/auth/token')
+     *
+     * 2. Com caminho personalizado e extrator:
+     *    new CanviAuthService($client, '/custom/auth', $extractorFunction)
+     *
      * @param CanviClientInterface $client Cliente HTTP para fazer requisições
-     * @param string|array $clientIdOrPath ID do cliente para autenticação ou caminho do endpoint
-     * @param string|callable|null $clientSecretOrExtractor Segredo do cliente ou extrator personalizado
-     * @param string $authPath Caminho do endpoint de autenticação
+     * @param string|array $clientIdOrPath ID do cliente ou caminho do endpoint de autenticação
+     * @param string|callable|null $clientSecretOrExtractor Segredo do cliente ou função extratora de token
+     * @param string $authPath Caminho do endpoint de autenticação (padrão: '/bt/token')
      * @param LoggerInterface|null $logger Instância do logger (opcional)
+     *
+     * @example
+     * // Uso com credenciais diretas
+     * $auth = new CanviAuthService(
+     *     $client,
+     *     'seu-client-id',
+     *     'seu-client-secret',
+     *     '/oauth/token',
+     *     $logger
+     * );
+     *
+     * // Uso com caminho personalizado e extrator
+     * $auth = new CanviAuthService(
+     *     $client,
+     *     '/custom/auth',
+     *     function($data) {
+     *         return $data['token'] ?? null;
+     *     },
+     *     null,
+     *     $logger
+     * );
      */
     public function __construct(
         CanviClientInterface $client,
@@ -52,32 +92,47 @@ class CanviAuthService
     }
 
     /**
-     * Gera um novo token de acesso
-     * 
-     * @param array|null $credentials Credenciais opcionais para autenticação
-     * @return string O token de acesso
-     * @throws \InvalidArgumentException Se as credenciais forem inválidas
-     * @throws ApiException Se a autenticação falhar
+     * Gera um token de acesso usando as credenciais fornecidas.
+     *
+     * Este método autentica o cliente na API Canvi usando as credenciais fornecidas
+     * e retorna um token de acesso que pode ser usado em requisições subsequentes.
+     *
+     * @param string|null $clientId ID do cliente (opcional, usa o configurado no construtor se não informado)
+     * @param string|null $clientSecret Segredo do cliente (opcional, usa o configurado no construtor se não informado)
+     * @param string|null $authPath Caminho do endpoint de autenticação (opcional, usa o configurado no construtor se não informado)
+     * @return string Token de acesso obtido da API
+     * @throws \InvalidArgumentException Se as credenciais forem inválidas ou ausentes
+     * @throws ApiException Se ocorrer um erro na autenticação ou na comunicação com a API
+     *
+     * @example
+     * // Usando credenciais configuradas no construtor
+     * $token = $authService->generateToken();
+     *
+     * // Sobrescrevendo credenciais
+     * $token = $authService->generateToken('outro-id', 'outro-segredo');
+     *
+     * // Especificando um caminho de autenticação personalizado
+     * $token = $authService->generateToken(null, null, '/custom/auth');
      */
-    public function generateToken(?array $credentials = null): string
+    public function generateToken(?string $clientId = null, ?string $clientSecret = null, ?string $authPath = null): string
     {
         // Se credenciais forem fornecidas, usa-as
-        if ($credentials !== null) {
-            if (!isset($credentials['client_id'], $credentials['private_key'])) {
-                $error = 'Credenciais inválidas: é necessário fornecer client_id e private_key';
+        if ($clientId !== null || $clientSecret !== null) {
+            if ($clientId === null || $clientSecret === null) {
+                $error = 'Credenciais inválidas: é necessário fornecer client_id e client_secret';
                 $this->logger?->error($error);
                 throw new \InvalidArgumentException($error);
             }
             
-            $path = $this->authPath;
+            $path = $authPath ?? $this->authPath;
             // Garante que o caminho comece com '/' para consistência
             if (strpos($path, '/') !== 0) {
                 $path = '/' . $path;
             }
             
             $authData = [
-                'client_id' => $credentials['client_id'],
-                'private_key' => $credentials['private_key']
+                'client_id' => $clientId,
+                'private_key' => $clientSecret
             ];
             
             $this->logger?->debug('Autenticando com credenciais fornecidas', [
@@ -184,6 +239,38 @@ class CanviAuthService
             'client_id' => $clientId,
             'private_key' => $clientSecret,
         ];
+    }
+    
+    /**
+     * Extrai o token da resposta de autenticação.
+     *
+     * Este método extrai o token de acesso da resposta da API de autenticação.
+     * Por padrão, procura pelos campos 'access_token' ou 'token' na resposta.
+     * Pode ser sobrescrito por um extrator personalizado configurado no construtor.
+     *
+     * @param array $data Dados da resposta da API de autenticação
+     * @return string Token de acesso extraído
+     * @throws ApiException Se o token não for encontrado na resposta
+     *
+     * @example
+     * // Exemplo de resposta da API:
+     * // {
+     * //   "access_token": "eyJhbGciOiJ...",
+     * //   "expires_in": 3600,
+     * //   "token_type": "Bearer"
+     * // }
+     */
+    private function extractTokenFromResponse(array $data): string
+    {
+        if (isset($data['access_token'])) {
+            return $data['access_token'];
+        }
+        
+        if (isset($data['token'])) {
+            return $data['token'];
+        }
+        
+        throw new ApiException('Token não encontrado na resposta');
     }
     
     /**

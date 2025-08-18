@@ -19,6 +19,16 @@ use R2Soft\Canvi\Exceptions\TokenStorageException;
 use R2Soft\Canvi\Services\CanviAuthService;
 use R2Soft\Canvi\Services\TokenStorage;
 
+/**
+ * Cliente HTTP para integração com a API Canvi.
+ * 
+ * Esta classe é responsável por gerenciar a comunicação com a API Canvi, incluindo
+ * autenticação, tratamento de erros e execução de requisições HTTP.
+ * 
+ * @package R2Soft\Canvi
+ * @author R2Soft <dev@r2soft.com.br>
+ * @version 1.0.0
+ */
 class CanviClient implements CanviClientInterface
 {
     private ?string $accessToken = null;
@@ -29,6 +39,22 @@ class CanviClient implements CanviClientInterface
     private ?RequestFactoryInterface $requestFactory = null;
     private ?StreamFactoryInterface $streamFactory = null;
 
+    /**
+     * Constrói uma nova instância do cliente Canvi.
+     *
+     * @param string $baseUrl URL base da API Canvi (ex: https://api.canvi.com.br)
+     * @param string|null $apiKey Chave de API para autenticação
+     * @param string|null $apiSecret Segredo da API para autenticação
+     * @param int $timeout Tempo máximo de espera em segundos para as requisições
+     * @param LoggerInterface|null $logger Instância do logger para registro de eventos
+     * @param Psr18Client|null $httpClient Cliente HTTP personalizado (opcional)
+     * @param RequestFactoryInterface|null $requestFactory Fábrica de requisições PSR-17 (opcional)
+     * @param StreamFactoryInterface|null $streamFactory Fábrica de streams PSR-17 (opcional)
+     * @param int $maxRetries Número máximo de tentativas em caso de falha
+     * @param int $retryDelayMs Tempo de espera entre tentativas em milissegundos
+     * @param string $userAgent User-Agent personalizado para as requisições
+     * @throws \InvalidArgumentException Se a URL base for inválida
+     */
     public function __construct(
         private string           $baseUrl,
         private ?string          $apiKey = null,
@@ -71,7 +97,17 @@ class CanviClient implements CanviClientInterface
     }
 
     /**
-     * @inheritDoc
+     * Executa uma requisição HTTP para a API Canvi.
+     *
+     * Este método é responsável por enviar requisições HTTP para a API Canvi,
+     * adicionando cabeçalhos necessários e tratando erros comuns.
+     *
+     * @param string $method Método HTTP (GET, POST, PUT, DELETE, etc.)
+     * @param string $endpoint Caminho do endpoint (ex: /api/v1/boletos)
+     * @param array $options Opções da requisição (headers, body, query, etc.)
+     * @return ResponseInterface Resposta da API
+     * @throws ApiException Em caso de erro na requisição
+     * @throws \InvalidArgumentException Se o método ou endpoint forem inválidos
      */
     public function request(string $method, string $endpoint, array $options = []): ResponseInterface
     {
@@ -132,15 +168,32 @@ class CanviClient implements CanviClientInterface
     }
 
     /**
-     * Autentica no endpoint informado e armazena o access token para uso nos próximos requests.
+     * Autentica no endpoint informado e armazena o token de acesso para uso nos próximos requests.
      *
-     * @param string $path Endpoint de autenticação
-     * @param array $payload Dados de autenticação
-     * @param callable|null $extractor Função para extrair o token da resposta
-     * @return string Token de acesso
-     * @throws ApiException
+     * Este método é responsável por autenticar o cliente na API Canvi usando as credenciais fornecidas
+     * e armazenar o token de acesso retornado para uso em requisições subsequentes.
+     *
+     * @param string $path Caminho do endpoint de autenticação (ex: /oauth/token)
+     * @param array $payload Dados de autenticação (geralmente client_id e client_secret)
+     * @param callable|null $extrator Função personalizada para extrair o token da resposta
+     * @return string Token de acesso obtido
+     * @throws ApiException Se a autenticação falhar ou o token não for encontrado na resposta
+     * @throws \InvalidArgumentException Se o caminho ou payload forem inválidos
+     * 
+     * @example
+     * // Exemplo de uso com credenciais diretas:
+     * $token = $client->authenticate('/oauth/token', [
+     *     'client_id' => 'seu-client-id',
+     *     'client_secret' => 'seu-client-secret',
+     *     'grant_type' => 'client_credentials'
+     * ]);
+     * 
+     * // Exemplo com extrator personalizado:
+     * $token = $client->authenticate('/custom-auth', $credenciais, function($data) {
+     *     return $data['accessToken'] ?? null;
+     * });
      */
-    public function authenticate(string $path, array $payload, ?callable $extractor = null): string
+    public function authenticate(string $path, array $payload, ?callable $extrator = null): string
     {
         try {
             $response = $this->request('POST', $path, [
@@ -149,8 +202,8 @@ class CanviClient implements CanviClientInterface
 
             $data = json_decode((string)$response->getBody(), true);
 
-            if ($extractor) {
-                $token = $extractor($data);
+            if ($extrator) {
+                $token = $extrator($data);
             } else {
                 $token = $data['access_token'] ?? $data['token'] ?? null;
 
@@ -255,11 +308,28 @@ class CanviClient implements CanviClientInterface
     /**
      * Envia uma requisição POST para a API Canvi.
      *
-     * @param string $path O endpoint da API
-     * @param array $json Dados a serem enviados no corpo da requisição
-     * @param string|null $idempotencyKey Chave de idempotência para garantir que a requisição não seja repetida
-     * @return array Resposta da API
-     * @throws ApiException Em caso de erro na requisição
+     * Este método simplifica o envio de requisições POST para a API Canvi,
+     * adicionando automaticamente o cabeçalho Content-Type: application/json
+     * e tratando erros comuns.
+     *
+     * @param string $path Caminho do endpoint (ex: /api/v1/boletos)
+     * @param array $json Dados a serem enviados no corpo da requisição (serão convertidos para JSON)
+     * @param string|null $idempotencyKey Chave de idempotência (opcional)
+     * @return array Resposta da API decodificada
+     * @throws ApiException Em caso de erro na requisição ou resposta inválida
+     * @throws \InvalidArgumentException Se o caminho for inválido
+     * @throws ValidationException Em caso de erro de validação nos dados
+     * 
+     * @example
+     * // Exemplo de uso:
+     * $client->post('/api/v1/boletos', [
+     *     'valor' => 100.00,
+     *     'vencimento' => '2023-12-31',
+     *     'pagador' => [
+     *         'nome' => 'Fulano de Tal',
+     *         'documento' => '123.456.789-09'
+     *     ]
+     * ], 'chave-idempotencia-123');
      */
     public function post(string $path, array $json, ?string $idempotencyKey = null): array
     {
@@ -291,10 +361,22 @@ class CanviClient implements CanviClientInterface
     /**
      * Envia uma requisição GET para a API Canvi.
      *
-     * @param string $path O endpoint da API
-     * @param array $query Parâmetros de query string
-     * @return array Resposta da API
-     * @throws ApiException Em caso de erro na requisição
+     * Este método simplifica o envio de requisições GET para a API Canvi,
+     * adicionando automaticamente parâmetros de consulta à URL.
+     *
+     * @param string $path Caminho do endpoint (ex: /api/v1/boletos/123)
+     * @param array $query Parâmetros de consulta a serem adicionados à URL
+     * @return array Resposta da API decodificada
+     * @throws ApiException Em caso de erro na requisição ou resposta inválida
+     * @throws \InvalidArgumentException Se o caminho for inválido
+     * 
+     * @example
+     * // Exemplo de uso:
+     * $boletos = $client->get('/api/v1/boletos', [
+     *     'status' => 'pending',
+     *     'data_inicio' => '2023-01-01',
+     *     'data_fim' => '2023-12-31'
+     * ]);
      */
     public function get(string $path, array $query = []): array
     {
