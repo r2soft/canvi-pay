@@ -1,9 +1,14 @@
-# R2Soft Canvi - Ambiente Docker (PHP 8.0)
+# R2Soft Canvi - SDK PHP
+
+SDK PHP para integração com a API Canvi.
+
+## Ambiente de Desenvolvimento
 
 Este projeto inclui um ambiente Docker para desenvolvimento do pacote (SDK), com:
-- PHP 8.0 (contêiner principal)
+- PHP 8.1 (contêiner principal)
 - Composer (container dedicado)
 - Xdebug opcional (para debug CLI)
+- PHPUnit para execução de testes
 
 Pré-requisitos
 - Docker e Docker Compose instalados
@@ -27,8 +32,67 @@ Comandos básicos
 - docker compose exec php php -m
 - docker compose exec php php path/para/script.php
 
-5) Rodar testes (se houver PHPUnit no composer.json)
-- docker compose exec php ./vendor/bin/phpunit
+5) Rodar testes
+
+```bash
+# Executar todos os testes
+docker compose exec -T php ./vendor/bin/phpunit
+
+# Executar testes de um diretório específico
+docker compose exec -T php ./vendor/bin/phpunit tests/Services
+
+# Executar um teste específico
+docker compose exec -T php ./vendor/bin/phpunit tests/Services/CanviAuthServiceTest.php
+
+# Executar com cobertura de código (requer Xdebug)
+docker compose exec -T php ./vendor/bin/phpunit --coverage-html coverage
+```
+
+### Sobre os Testes
+
+O projeto inclui testes unitários e de integração para garantir o funcionamento correto do SDK. Os testes são executados com PHPUnit.
+
+#### Estrutura de Testes
+
+- `tests/`: Contém todos os testes do projeto
+  - `Services/`: Testes para os serviços do SDK
+  - `Webhook/`: Testes para validação de webhooks
+  - `CanviClientTest.php`: Testes para o cliente principal
+  - `SmokeTest.php`: Testes de fumaça para verificação básica
+
+#### Testes no Ambiente Docker
+
+Alguns testes que envolvem manipulação de permissões de arquivos podem não funcionar corretamente no ambiente Docker devido a limitações do sistema de arquivos. Estes testes são automaticamente pulados quando executados em um contêiner Docker.
+
+Os seguintes testes são afetados:
+- `testInvalidStorageDirectory` - Testa o comportamento com diretórios inválidos
+- `testUnwritableStorageDirectory` - Testa o comportamento com diretórios sem permissão de escrita
+
+Para executar todos os testes, incluindo os que envolvem manipulação de permissões, execute-os em um ambiente que não seja Docker.
+
+#### Testes de Integração
+
+Os testes de integração exigem configurações adicionais, como chaves de API válidas. Eles são executados apenas quando as variáveis de ambiente necessárias estão definidas.
+
+Para configurar as credenciais para testes de integração, crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+
+```env
+CANVI_API_KEY=seu_api_key
+CANVI_API_SECRET=seu_api_secret
+CANVI_BASE_URL=https://gateway-homol.service-canvi.com.br
+```
+
+#### Executando Testes Específicos
+
+Você pode executar testes específicos usando filtros do PHPUnit:
+
+```bash
+# Executar apenas testes com a anotação @group auth
+docker compose exec -T php ./vendor/bin/phpunit --group auth
+
+# Executar testes que correspondam a um padrão
+docker compose exec -T php ./vendor/bin/phpunit --filter testGenerateToken
+```
 
 6) Logs
 - docker compose logs -f php
@@ -57,7 +121,27 @@ Manutenção
 - Derrubar e remover volumes anônimos (cuidado): `docker compose down -v`
 - Atualizar dependências: `docker compose run --rm composer update`
 
-Resolução de problemas
+## Testes e Qualidade de Código
+
+O projeto inclui configurações para análise estática de código e formatação:
+
+### PHPStan
+
+O PHPStan é usado para análise estática de código. Para executar:
+
+```bash
+docker compose exec -T php ./vendor/bin/phpstan analyse
+```
+
+### PHP-CS-Fixer
+
+O PHP-CS-Fixer é usado para padronizar a formatação do código. Para formatar o código:
+
+```bash
+docker compose exec -T php ./vendor/bin/php-cs-fixer fix
+```
+
+## Resolução de problemas
 - Erro ao copiar *.ini no build: verifique se `php_ini_configuration.ini` e `xdebug_configuration.ini` existem na raiz do projeto.
 - 404 no Nginx: garanta que exista `public/index.php` ou ajuste `root` no arquivo `NginxConfigurationFile.conf`.
 - Xdebug não conecta: checar `XDEBUG_MODE`, `XDEBUG_CONFIG` e firewall local (porta 9003).
