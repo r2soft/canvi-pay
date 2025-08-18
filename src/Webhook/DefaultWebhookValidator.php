@@ -5,13 +5,34 @@ namespace R2Soft\Canvi\Webhook;
 
 final class DefaultWebhookValidator
 {
+    /** @var string */
+    private $signatureHeader;
+    
+    /** @var string|null */
+    private $secret;
+    
+    /** @var string|null */
+    private $publicKey;
+    
+    /** @var string */
+    private $algorithm;
+    
+    /** @var int */
+    private $tolerance;
+
     public function __construct(
-        private readonly string $signatureHeader = 'X-Canvi-Signature',
-        private readonly ?string $secret = null,          // para HMAC
-        private readonly ?string $publicKey = null,       // para assimétrico (PEM)
-        private readonly string $algorithm = 'sha256',    // HMAC: sha256 | sha512...
-        private readonly int $tolerance = 300             // segundos
-    ) {}
+        string $signatureHeader = 'X-Canvi-Signature',
+        ?string $secret = null,          // para HMAC
+        ?string $publicKey = null,       // para assimétrico (PEM)
+        string $algorithm = 'sha256',    // HMAC: sha256 | sha512...
+        int $tolerance = 300             // segundos
+    ) {
+        $this->signatureHeader = $signatureHeader;
+        $this->secret = $secret;
+        $this->publicKey = $publicKey;
+        $this->algorithm = $algorithm;
+        $this->tolerance = $tolerance;
+    }
 
     public function isValid(array $server, string $rawBody): bool
     {

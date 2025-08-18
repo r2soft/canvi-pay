@@ -5,8 +5,11 @@ namespace R2Soft\Canvi;
 
 use Psr\Http\Client\ClientInterface as Psr18Client;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Log\LoggerInterface;
+use R2Soft\Canvi\Contracts\CanviClientInterface;
 use R2Soft\Canvi\Exceptions\ApiException;
 use R2Soft\Canvi\Exceptions\UnauthorizedException;
 use R2Soft\Canvi\Exceptions\ValidationException;
@@ -16,12 +19,15 @@ use R2Soft\Canvi\Exceptions\TokenStorageException;
 use R2Soft\Canvi\Services\CanviAuthService;
 use R2Soft\Canvi\Services\TokenStorage;
 
-final class CanviClient
+class CanviClient implements CanviClientInterface
 {
     private ?string $accessToken = null;
     private ?TokenStorage $tokenStorage = null;
     private const TOKEN_EXPIRES_IN = 604800; // 7 dias em segundos
     private const TOKEN_RENEW_BEFORE = 3600; // 1 hora antes de expirar
+    private ?Psr18Client $httpClient = null;
+    private ?RequestFactoryInterface $requestFactory = null;
+    private ?StreamFactoryInterface $streamFactory = null;
 
     public function __construct(
         private string $baseUrl,
@@ -29,32 +35,168 @@ final class CanviClient
         private ?string $apiSecret = null,
         private int $timeout = 10,
         private ?LoggerInterface $logger = null,
-        private ?Psr18Client $httpClient = null,
-        private ?RequestFactoryInterface $requestFactory = null,
-        private ?StreamFactoryInterface $streamFactory = null,
+        ?Psr18Client $httpClient = null,
+        ?RequestFactoryInterface $requestFactory = null,
+        ?StreamFactoryInterface $streamFactory = null,
         private int $maxRetries = 0,
         private int $retryDelayMs = 250,
         private ?string $userAgent = 'r2soft-canvi-php/1.x'
-    ) {}
+    ) {
+        $this->httpClient = $httpClient;
+        $this->requestFactory = $requestFactory;
+        $this->streamFactory = $streamFactory;
+        $this->baseUrl = rtrim($baseUrl, '/');
+    }
 
+    public function getBaseUri(): string
+    {
+        return $this->baseUrl;
+    }
+    
+    /**
+     * Obtém a chave da API
+     */
+    public function getApiKey(): ?string 
+    { 
+        return $this->apiKey; 
+    }
+    
+    /**
+     * Obtém o segredo da API
+     */
+    public function getApiSecret(): ?string 
+    { 
+        return $this->apiSecret; 
+    }
+    
+    /**
+     * @inheritDoc
+     */
+    public function request(string $method, string $endpoint, array $options = []): ResponseInterface
+    {
+        $httpClient = $this->httpClient ?? $this->requireHttpClient();
+        $requestFactory = $this->requestFactory ?? $this->requireRequestFactory();
+        $streamFactory = $this->streamFactory ?? $this->requireStreamFactory();
+
+        $uri = $this->baseUrl . '/' . ltrim($endpoint, '/');
+        $request = $requestFactory->createRequest($method, $uri);
+
+        // Adiciona headers padrão
+        $headers = array_merge([
+            'User-Agent' => $this->userAgent,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ], $options['headers'] ?? []);
+
+        // Adiciona o token de acesso se disponível
+        if ($this->accessToken) {
+            $headers['Authorization'] = 'Bearer ' . $this->accessToken;
+        }
+
+        // Adiciona autenticação básica se fornecida
+        if (isset($options['auth']) && is_array($options['auth']) && count($options['auth']) === 2) {
+            $authValue = base64_encode($options['auth'][0] . ':' . $options['auth'][1]);
+            $headers['Authorization'] = 'Basic ' . $authValue;
+        }
+
+        // Aplica os headers à requisição
+        foreach ($headers as $name => $value) {
+            $request = $request->withHeader($name, $value);
+        }
+
+        // Adiciona o corpo da requisição se fornecido
+        if (isset($options['json'])) {
+            $body = $streamFactory->createStream(json_encode($options['json']));
+            $request = $request->withBody($body);
+        }
+
+        // Executa a requisição com tratamento de erros
+        try {
+            return $httpClient->sendRequest($request);
+        } catch (\Psr\Http\Client\ClientExceptionInterface $e) {
+            $this->logger?->error('Erro na requisição HTTP: ' . $e->getMessage(), [
+                'method' => $method,
+                'endpoint' => $endpoint,
+                'error' => $e->getMessage(),
+            ]);
+            throw new ApiException('Erro na requisição HTTP: ' . $e->getMessage(), $e->getCode(), $e);
+        } catch (\Exception $e) {
+            $this->logger?->error('Erro inesperado na requisição: ' . $e->getMessage(), [
+                'method' => $method,
+                'endpoint' => $endpoint,
+                'error' => $e->getMessage(),
+            ]);
+            throw new ApiException('Erro inesperado: ' . $e->getMessage(), $e->getCode() ?: 500, $e);
+        }
+    }
+    
+    /**
+     * Autentica no endpoint informado e armazena o access token para uso nos próximos requests.
+     * 
+     * @param string $path Endpoint de autenticação
+     * @param array $payload Dados de autenticação
+     * @param callable|null $extractor Função para extrair o token da resposta
+     * @return string Token de acesso
+     * @throws ApiException
+     */
+    public function authenticate(string $path, array $payload, ?callable $extractor = null): string
+    {
+        try {
+            $response = $this->request('POST', $path, [
+                'json' => $payload
+            ]);
+            
+            $data = json_decode((string) $response->getBody(), true);
+            
+            if ($extractor) {
+                $token = $extractor($data);
+            } else {
+                $token = $data['access_token'] ?? $data['token'] ?? null;
+                
+                if ($token === null) {
+                    throw new ApiException('Token não encontrado na resposta da API');
+                }
+                
+                if (isset($data['expires_in'])) {
+                    $this->setAccessToken($token, (int) $data['expires_in']);
+                } else {
+                    $this->setAccessToken($token);
+                }
+            }
+            
+            if (empty($token)) {
+                throw new ApiException('Token não encontrado na resposta da API');
+            }
+            
+            return $token;
+        } catch (\Exception $e) {
+            throw new ApiException('Falha na autenticação: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+    
     /**
      * Obtém a instância do TokenStorage
      */
     private function getTokenStorage(): TokenStorage
     {
         if ($this->tokenStorage === null) {
-            $this->tokenStorage = new TokenStorage(null, $this->apiSecret);
+            $this->tokenStorage = new TokenStorage(
+                sys_get_temp_dir() . '/canvi-tokens',
+                $this->apiKey ?? 'default',
+                $this->logger
+            );
         }
+        
         return $this->tokenStorage;
     }
-
+    
     /**
      * Define o token de acesso e seu tempo de expiração
-     *
+     * 
      * @param string $token Token de acesso
-     * @param int $expiresIn Tempo de expiração em segundos a partir de agora
+     * @param int|null $expiresIn Tempo de expiração em segundos a partir de agora. Se não informado, usa o valor padrão de 7 dias.
      */
-    public function setAccessToken(string $token, int $expiresIn = null): void
+    public function setAccessToken(string $token, ?int $expiresIn = null): void
     {
         $this->accessToken = $token;
         $expiresIn = $expiresIn ?? self::TOKEN_EXPIRES_IN;
@@ -108,8 +250,6 @@ final class CanviClient
         }
     }
 
-    public function getApiKey(): ?string { return $this->apiKey; }
-    public function getApiSecret(): ?string { return $this->apiSecret; }
 
     /**
      * Envia uma requisição POST para a API Canvi.
@@ -128,7 +268,7 @@ final class CanviClient
         try {
             return $this->sendJson('POST', $path, $json, $idempotencyKey);
         }catch (\Throwable $e) {
-            debug($e->getMessage());
+            $this->logger?->error('API request failed: ' . $e->getMessage(), ['exception' => $e]);
             throw new ApiException($e->getMessage(), $e->getCode(), $e);
         }
 
@@ -164,19 +304,28 @@ final class CanviClient
             'User-Agent'    => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
-        // Tenta carregar o token do armazenamento
-        $token = $this->loadToken();
+        
+        // Skip token for auth requests to prevent infinite loops
+        if (!str_ends_with($path, '/token') && !str_ends_with($path, '/token/')) {
+            // Tenta carregar o token do armazenamento
+            $token = $this->loadToken();
 
-        // Se não há token ou está expirado, gera um novo
-        if ($this->isTokenExpired() || $token === null) {
-            $authService = new CanviAuthService($this);
-            $token = $authService->generateToken();
-            // O token e seu tempo de expiração são definidos pelo método generateToken
-            // através de setAccessToken
-        }
+            // Se não há token ou está expirado, tenta obter um novo
+            if (($this->isTokenExpired() || $token === null) && !empty($this->apiKey) && !empty($this->apiSecret)) {
+                // Chama o endpoint de autenticação diretamente
+                $token = $this->authenticate(
+                    '/bt/token',
+                    [
+                        'client_id' => $this->apiKey,
+                        'private_key' => $this->apiSecret
+                    ]
+                );
+            }
 
-        if ($token) {
-            $headers['Authorization'] = 'Bearer ' . $token;
+            // Only add Authorization header if we have a token
+            if (!empty($token)) {
+                $headers['Authorization'] = 'Bearer ' . $token;
+            }
         }
         if ($idempotencyKey) {
             $headers['Idempotency-Key'] = $idempotencyKey;
@@ -222,7 +371,11 @@ final class CanviClient
                 ]);
 
                 if (!$this->shouldRetry($status, $attempts)) {
-                    debug($ex->getMessage());
+                    $this->logger?->error('API request failed after retries', [
+                        'error' => $ex->getMessage(),
+                        'status' => $status,
+                        'attempt' => $attempts
+                    ]);
                     throw $ex;
                 }
                 usleep($this->retryDelayMs * 1000);
@@ -231,9 +384,19 @@ final class CanviClient
                     'method' => $method,
                     'path'   => $path,
                     'error'  => $e->getMessage(),
+                    'trace'  => $e->getTraceAsString()
                 ]);
-                debug($e->getMessage());
-                throw new ApiException('HTTP transport error', 0, $e);
+                
+                // Log the response details if available
+                if (isset($response)) {
+                    $this->logger?->error('Response details', [
+                        'status' => $response->getStatusCode(),
+                        'headers' => $response->getHeaders(),
+                        'body' => (string) $response->getBody()
+                    ]);
+                }
+                
+                throw new ApiException('HTTP transport error: ' . $e->getMessage(), 0, $e);
             }
         }
 
@@ -252,76 +415,6 @@ final class CanviClient
         }
     }
 
-    /**
-     * Autentica no endpoint informado e armazena o access token para uso nos próximos requests.
-     * O payload e o extractor são flexíveis para adequar ao formato da API.
-     *
-     * @param string $path ex.: '/api/v1/auth/token'
-     * @param array $payload corpo da requisição (ex.: ['api_key' => '...', 'api_secret' => '...'])
-     * @param callable|null $extractor função opcional para extrair o token da resposta: fn(array $data): ?string
-     * @return string token obtido
-     * @throws ApiException quando a autenticação falhar ou o token não for encontrado
-     */
-    public function authenticate(string $path, array $payload, ?callable $extractor = null): string
-    {
-        $client = $this->requireHttpClient();
-        $requestFactory = $this->requireRequestFactory();
-        $streamFactory = $this->requireStreamFactory();
-
-        $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
-
-        $headers = [
-            'Accept'           => 'application/json',
-            'Content-Type'     => 'application/json',
-            'User-Agent'       => $this->userAgent ?? 'r2soft-canvi-php',
-            'X-Client-Timeout' => (string)$this->timeout,
-        ];
-
-        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $body = $streamFactory->createStream($encoded);
-
-        $request = $requestFactory->createRequest('POST', $uri);
-        foreach ($headers as $k => $v) {
-            $request = $request->withHeader($k, $v);
-        }
-
-        $request = $request->withBody($body);
-
-        try {
-            $response = $client->sendRequest($request);
-            $status = $response->getStatusCode();
-            $raw = (string)$response->getBody();
-            $data = $this->decodeJsonSafely($raw);
-            if ($status >= 200 && $status < 300) {
-                $token = null;
-                if ($extractor) {
-                    $token = $extractor(is_array($data) ? $data : []);
-                }
-                if (!$token) {
-                    $arr = is_array($data) ? $data : [];
-                    $container = $arr['data'] ?? $arr;
-                    $token = $container['access_token'] ?? $container['token'] ?? null;
-                }
-                if (!is_string($token) || $token === '') {
-                    throw new ApiException('Token not found in authentication response', 0, null, $status, $raw);
-                }
-                $this->setAccessToken($token);
-                return $token;
-            }
-
-            $ex = $this->mapApiError($status, is_array($data) ? $data : null, $raw);
-            throw $ex;
-        } catch (\Throwable $e) {
-            $this->logger?->error('Canvi auth error', [
-                'path' => $path,
-                'error' => $e->getMessage(),
-            ]);
-            if ($e instanceof ApiException) {
-                throw $e;
-            }
-            throw new ApiException('HTTP transport error (auth)', 0, $e);
-        }
-    }
 
     private function mapApiError(int $status, ?array $data, string $raw): ApiException
     {
