@@ -1,6 +1,7 @@
 {
     "name": "r2soft/canvi-pay",
     "type": "library",
+    "license": "MIT",
     "require": {
         "php": "^8.0",
         "guzzlehttp/guzzle": "^7.0.1",
