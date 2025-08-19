@@ -3,13 +3,13 @@ declare(strict_types=1);
 
 Namespace R2Soft\Canvi\Dto\Merchant;
 
-use App\Exception\DomainValidationException;
+use R2Soft\Canvi\Exceptions\DomainValidationException;
 
 final class Financeiro
 {
     public function __construct(
         public string  $chave_pix,
-        public ?int    $horario_retirada = null, // você citou no exemplo, mantive opcional
+        public ?string $horario_retirada = null, // você citou no exemplo, mantive opcional
         public string  $celular_financeiro = '',
         public string  $email_financeiro = '',
     ) {
@@ -20,7 +20,7 @@ final class Financeiro
     {
         return new self(
             chave_pix:           (string)($a['chave_pix'] ?? ''),
-            horario_retirada:    isset($a['horario_retirada']) ? (int)$a['horario_retirada'] : null,
+            horario_retirada:    $a['horario_retirada'] ?? null,
             celular_financeiro:  (string)($a['celular_financeiro'] ?? ''),
             email_financeiro:    (string)($a['email_financeiro'] ?? ''),
         );

@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 Namespace R2Soft\Canvi\Dto\Merchant;
 
-use App\Exception\DomainValidationException;
+use R2Soft\Canvi\Exceptions\DomainValidationException;
 
 final class ComercianteCadastro
 {
     public function __construct(
-        public GeralDto        $geral,
-        public ResponsavelDto  $responsavel,
+        public Geral        $geral,
+        public Responsavel  $responsavel,
         public string          $id_externo,
         public string          $tipo_conta, // "liquidacao" | "pagamento"
-        public ConfiguracaoDto $configuracao,
+        public Configuracao $configuracao,
     ) {
         $this->validate();
     }
@@ -20,11 +20,11 @@ final class ComercianteCadastro
     public static function fromArray(array $a): self
     {
         return new self(
-            geral:         GeralDto::fromArray((array)($a['geral'] ?? [])),
-            responsavel:   ResponsavelDto::fromArray((array)($a['responsavel'] ?? [])),
+            geral:         Geral::fromArray((array)($a['geral'] ?? [])),
+            responsavel:   Responsavel::fromArray((array)($a['responsavel'] ?? [])),
             id_externo:    (string)($a['id_externo'] ?? ''),
             tipo_conta:    (string)($a['tipo_conta'] ?? ''),
-            configuracao:  ConfiguracaoDto::fromArray((array)($a['configuracao'] ?? [])),
+            configuracao:  Configuracao::fromArray((array)($a['configuracao'] ?? [])),
         );
     }
 

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 Namespace R2Soft\Canvi\Dto\Merchant;
 
-use App\Exception\DomainValidationException;
+use R2Soft\Canvi\Exceptions\DomainValidationException;
 
 final class Geral
 {
@@ -16,16 +16,16 @@ final class Geral
         public string|null  $inscricao_estadual,
         public string|null  $inscricao_municipal,
         public string       $email,
-        public FinanceiroDto $financeiro,
-        public EnderecoDto   $endereco,
+        public Financeiro $financeiro,
+        public Endereco   $endereco,
     ) {
         $this->validate();
     }
 
     public static function fromArray(array $a): self
     {
-        $fin = FinanceiroDto::fromArray((array)($a['financeiro'] ?? []));
-        $end = EnderecoDto::fromArray((array)($a['endereco'] ?? []));
+        $fin = Financeiro::fromArray((array)($a['financeiro'] ?? []));
+        $end = Endereco::fromArray((array)($a['endereco'] ?? []));
 
         return new self(
             tipo_pessoa:         (string)($a['tipo_pessoa'] ?? ''),

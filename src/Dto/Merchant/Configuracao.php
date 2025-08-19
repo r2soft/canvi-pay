@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 Namespace R2Soft\Canvi\Dto\Merchant;
 
-use App\Exception\DomainValidationException;
+use R2Soft\Canvi\Exceptions\DomainValidationException;
 
 final class Configuracao
 {

@@ -21,10 +21,10 @@ use R2Soft\Canvi\Services\TokenStorage;
 
 /**
  * Cliente HTTP para integração com a API Canvi.
- * 
+ *
  * Esta classe é responsável por gerenciar a comunicação com a API Canvi, incluindo
  * autenticação, tratamento de erros e execução de requisições HTTP.
- * 
+ *
  * @package R2Soft\Canvi
  * @author R2Soft <dev@r2soft.com.br>
  * @version 1.0.0
@@ -179,7 +179,7 @@ class CanviClient implements CanviClientInterface
      * @return string Token de acesso obtido
      * @throws ApiException Se a autenticação falhar ou o token não for encontrado na resposta
      * @throws \InvalidArgumentException Se o caminho ou payload forem inválidos
-     * 
+     *
      * @example
      * // Exemplo de uso com credenciais diretas:
      * $token = $client->authenticate('/oauth/token', [
@@ -187,7 +187,7 @@ class CanviClient implements CanviClientInterface
      *     'client_secret' => 'seu-client-secret',
      *     'grant_type' => 'client_credentials'
      * ]);
-     * 
+     *
      * // Exemplo com extrator personalizado:
      * $token = $client->authenticate('/custom-auth', $credenciais, function($data) {
      *     return $data['accessToken'] ?? null;
@@ -319,7 +319,7 @@ class CanviClient implements CanviClientInterface
      * @throws ApiException Em caso de erro na requisição ou resposta inválida
      * @throws \InvalidArgumentException Se o caminho for inválido
      * @throws ValidationException Em caso de erro de validação nos dados
-     * 
+     *
      * @example
      * // Exemplo de uso:
      * $client->post('/api/v1/boletos', [
@@ -338,7 +338,7 @@ class CanviClient implements CanviClientInterface
             'json' => $json,
             'idempotencyKey' => $idempotencyKey
         ]);
-        
+
         if (!is_string($path) || empty($path)) {
             throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
         }
@@ -359,6 +359,44 @@ class CanviClient implements CanviClientInterface
     }
 
     /**
+     * Envia uma requisição PUT com JSON para a API Canvi.
+     *
+     * @param string $path Endpoint (ex.: /ac/comerciante)
+     * @param array $json Corpo JSON
+     * @param string|null $idempotencyKey Chave de idempotência (opcional)
+     * @return array
+     * @throws \InvalidArgumentException
+     * @throws \R2Soft\Canvi\Exceptions\ValidationException
+     * @throws \R2Soft\Canvi\Exceptions\ApiException
+     */
+    public function put(string $path, array $json, ?string $idempotencyKey = null): array
+    {
+        $this->logger?->debug('put method called', [
+            'path' => $path,
+            'json' => $json,
+            'idempotencyKey' => $idempotencyKey,
+        ]);
+
+        if ($path === '') {
+            throw new \InvalidArgumentException('O caminho da API deve ser uma string não vazia');
+        }
+
+        try {
+            $result = $this->sendJson('PUT', $path, $json, $idempotencyKey);
+            $this->logger?->debug('put method completed successfully', ['result' => $result]);
+            return $result;
+        } catch (\R2Soft\Canvi\Exceptions\ValidationException $e) {
+            throw $e; // repassa validação
+        } catch (ApiException $e) {
+            throw $e; // repassa erros de API da hierarquia
+        } catch (\Throwable $e) {
+            $this->logger?->error('API request failed: ' . $e->getMessage(), ['exception' => $e]);
+            throw new ApiException($e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+
+    /**
      * Envia uma requisição GET para a API Canvi.
      *
      * Este método simplifica o envio de requisições GET para a API Canvi,
@@ -369,7 +407,7 @@ class CanviClient implements CanviClientInterface
      * @return array Resposta da API decodificada
      * @throws ApiException Em caso de erro na requisição ou resposta inválida
      * @throws \InvalidArgumentException Se o caminho for inválido
-     * 
+     *
      * @example
      * // Exemplo de uso:
      * $boletos = $client->get('/api/v1/boletos', [
@@ -416,6 +454,7 @@ class CanviClient implements CanviClientInterface
 
             // Se não há token ou está expirado, tenta obter um novo
             if (($this->isTokenExpired() || $token === null) && !empty($this->apiKey) && !empty($this->apiSecret)) {
+
                 // Chama o endpoint de autenticação diretamente
                 $token = $this->authenticate(
                     '/bt/token',
@@ -545,9 +584,9 @@ class CanviClient implements CanviClientInterface
         ]);
 
         // Heurística: se tem erros de campo ou é um código de validação, trate como validação
-        $isValidationError = ($status === 400 && !empty($erros)) || 
+        $isValidationError = ($status === 400 && !empty($erros)) ||
                             ($code && (stripos((string)$code, 'VAL') === 0 || stripos((string)$msg, 'valida') !== false));
-        
+
         if ($isValidationError) {
             $this->logger?->debug('Criando ValidationException', [
                 'message' => $msg,
@@ -555,7 +594,7 @@ class CanviClient implements CanviClientInterface
                 'code' => $code,
                 'status' => $status
             ]);
-            
+
             // Cria a exceção de validação com a mensagem e erros
             $exception = new Exceptions\ValidationException(
                 $msg,
@@ -563,20 +602,20 @@ class CanviClient implements CanviClientInterface
                 $status, // Usa o status HTTP fornecido
                 is_string($data) ? $data : json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
             );
-            
+
             // Se a exceção tiver um método setCode, define o código original
             if (method_exists($exception, 'setCode') && $code) {
                 $this->logger?->debug('Chamando setCode no ValidationException', ['code' => $code]);
                 $exception->setCode($code);
             }
-            
+
             $this->logger?->debug('Retornando ValidationException', [
                 'class' => get_class($exception),
                 'code' => $exception->getCode(),
                 'message' => $exception->getMessage(),
                 'has_errors' => !empty($erros)
             ]);
-            
+
             return $exception;
         }
 

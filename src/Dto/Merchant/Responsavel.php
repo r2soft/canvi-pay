@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 Namespace R2Soft\Canvi\Dto\Merchant;
 
-use App\Exception\DomainValidationException;
+use R2Soft\Canvi\Exceptions\DomainValidationException;
 
 final class Responsavel
 {
@@ -15,14 +15,14 @@ final class Responsavel
         public string     $celular, // formato internacional brasileiro
         public string     $email,
         public string     $data_nascimento,
-        public EnderecoDto $endereco,
+        public Endereco $endereco,
     ) {
         $this->validate();
     }
 
     public static function fromArray(array $a): self
     {
-        $end = EnderecoDto::fromArray((array)($a['endereco'] ?? []));
+        $end = Endereco::fromArray((array)($a['endereco'] ?? []));
         return new self(
             nome:            (string)($a['nome'] ?? ''),
             cpf:             (string)($a['cpf'] ?? ''),
