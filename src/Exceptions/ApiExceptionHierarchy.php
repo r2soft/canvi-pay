@@ -8,11 +8,3 @@ namespace R2Soft\Canvi\Exceptions;
 class UnauthorizedException extends ApiException {}
 class RateLimitException extends ApiException {}
 class ServerException extends ApiException {}
-
-class ValidationException extends ApiException
-{
-    public function __construct(string $message, int $code = 0, public readonly array $fields = [])
-    {
-        parent::__construct($message, $code);
-    }
-}

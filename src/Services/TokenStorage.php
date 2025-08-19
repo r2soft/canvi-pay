@@ -41,54 +41,81 @@ final class TokenStorage
         return rtrim($this->storagePath, '/') . '/' . self::TOKEN_FILENAME;
     }
 
+    /**
+     * Opens a file with a lock
+     *
+     * @param string $file Path to the file
+     * @param string $mode Mode to open the file (r, w, etc.)
+     * @return resource File handle
+     * @throws TokenStorageException If the file cannot be opened
+     */
+    private function openWithLock(string $file, string $mode)
+    {
+        $fh = @fopen($file, $mode);
+        if ($fh === false) {
+            throw new TokenStorageException('Failed to open token file: ' . $file);
+        }
+        return $fh;
+    }
+
     private function loadAllTokens(): array
     {
-        $tokenFile = $this->getTokenFilePath();
-        
-        if (!file_exists($tokenFile) || !is_readable($tokenFile)) {
-            return [];
-        }
-
-        $content = @file_get_contents($tokenFile);
-        if ($content === false) {
-            return [];
-        }
-        
-        if (empty($content)) {
+        @mkdir($this->storagePath, 0700, true);
+        $file = $this->getTokenFilePath();
+        if (!file_exists($file)) {
             return [];
         }
 
         try {
-            $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+            $fh = $this->openWithLock($file, 'r');
             
-            // Se for o formato antigo, converte para o novo formato
-            if ($data !== null && isset($data['token'])) {
-                return ['default' => $data];
+            if (!flock($fh, LOCK_SH)) {
+                throw new TokenStorageException('Failed to acquire shared lock on token file');
+            }
+            
+            $json = stream_get_contents($fh) ?: '{}';
+            
+            // Tenta decodificar o JSON, se falhar, retorna array vazio
+            $data = json_decode($json, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                // Se o JSON for inválido, remove o arquivo corrompido
+                fclose($fh);
+                @unlink($file);
+                return [];
             }
             
             return is_array($data) ? $data : [];
-        } catch (\JsonException $e) {
-            // Se o arquivo estiver corrompido, remove-o
-            @unlink($tokenFile);
+            
+        } catch (\Exception $e) {
+            // Em caso de erro, remove o arquivo corrompido
+            @unlink($file);
             return [];
+        } finally {
+            if (isset($fh) && is_resource($fh)) {
+                flock($fh, LOCK_UN);
+                fclose($fh);
+            }
         }
     }
 
     private function saveAllTokens(array $tokens): void
     {
-        $tokenFile = $this->getTokenFilePath();
-        $result = file_put_contents(
-            $tokenFile,
-            json_encode($tokens, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
-            LOCK_EX
-        );
+        @mkdir($this->storagePath, 0700, true);
+        $file = $this->storagePath . DIRECTORY_SEPARATOR . self::TOKEN_FILENAME;
 
-        if ($result === false) {
-            throw new TokenStorageException("Falha ao salvar os tokens no arquivo: {$tokenFile}");
+        $fh = $this->openWithLock($file, 'c+');
+        try {
+            flock($fh, LOCK_EX);
+            ftruncate($fh, 0);
+            fwrite($fh, json_encode($tokens, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            // Permissões restritivas (somente dono)
+            @chmod($file, 0600);
+        } finally {
+            flock($fh, LOCK_UN);
+            fclose($fh);
         }
-
-        // Define permissões restritivas no arquivo
-        chmod($tokenFile, 0600);
     }
 
     public function loadToken(): ?array

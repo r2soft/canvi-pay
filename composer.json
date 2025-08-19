@@ -2,23 +2,44 @@
     "name": "r2soft/canvi-pay",
     "type": "library",
     "require": {
-        "php": ">=8.0",
-        "guzzlehttp/guzzle": "^7.9",
-        "psr/log": "^3.0"
+        "php": "^8.0",
+        "guzzlehttp/guzzle": "^7.0.1",
+        "psr/log": "^1.1.4"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.6",
-        "doctrine/instantiator": "^1.5",
-        "myclabs/deep-copy": "^1.11"
+        "phpunit/phpunit": "^9.5.28",
+        "doctrine/instantiator": "^1.4",
+        "myclabs/deep-copy": "^1.10",
+        "r2soft/utils": "^1.0"
+    },
+    "scripts": {
+        "test": "phpunit --colors=always"
     },
     "autoload": {
         "psr-4": {
-            "R2Soft\\Canvi\\": "src/"
+            "R2Soft\\\\Canvi\\\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "R2Soft\\Canvi\\Tests\\": "tests/"
+            "R2Soft\\\\Canvi\\\\Tests\\\\": "tests/"
         }
-    }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.0.30"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://repo.packagist.org"
+        }
+    ]
 }
