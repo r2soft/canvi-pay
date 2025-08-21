@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace R2Soft\Canvi\Tests\Services;
+namespace Tests\Services;
 
 use PHPUnit\Framework\TestCase;
 use R2Soft\Canvi\Exceptions\TokenStorageException;
