@@ -13,11 +13,17 @@ test-phpunit:
     - echo "Instalando dependências com o composer..."
     - sudo docker run --rm -v $(pwd):/app -w /app canvi-pay-tests composer install --no-interaction --no-progress --prefer-dist
     - echo "Executando os testes PHPUnit..."
-    - sudo docker run --rm -v $(pwd):/app -w /app canvi-pay-tests ./vendor/bin/phpunit --testsuite canvi-pay
+    - sudo docker run --rm -v $(pwd):/app -w /app canvi-pay-tests ./vendor/bin/phpunit --testsuite canvi-pay --log-junit report.xml
   artifacts:
     when: always
     paths:
-      - ./build/logs/
+      - report.xml
     reports:
-      junit: ./build/logs/junit.xml
-    expire_in: 1 week
+      junit: report.xml
+#  artifacts:
+#    when: always
+#    paths:
+#      - ./build/logs/
+#    reports:
+#      junit: ./build/logs/junit.xml
+#    expire_in: 1 week
