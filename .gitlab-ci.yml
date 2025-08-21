@@ -6,6 +6,9 @@ before_script:
   - sudo chown -R gitlab-runner:gitlab-runner ./
 #  - docker info
 
+after_script:
+  - sudo chown -R gitlab-runner:gitlab-runner ./
+
 test-phpunit:
   stage: test
   script:
