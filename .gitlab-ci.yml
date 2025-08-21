@@ -3,6 +3,7 @@ stages:
 
 before_script:
   - docker --version
+  - sudo chown -R gitlab-runner:gitlab-runner ./
 #  - docker info
 
 test-phpunit:
