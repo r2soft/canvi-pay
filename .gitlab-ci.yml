@@ -3,6 +3,7 @@ stages:
 
 before_script:
   - docker --version
+  - chmod +x ./run_tests.sh
   - sudo chown -R gitlab-runner:gitlab-runner ./
 #  - docker info
 
