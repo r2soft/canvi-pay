@@ -18,12 +18,12 @@
     },
     "autoload": {
         "psr-4": {
-            "R2Soft\\\\Canvi\\\\": "src/"
+            "R2Soft\\Canvi\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "R2Soft\\\\Canvi\\\\Tests\\\\": "tests/"
+            "Tests\\": "tests/"
         }
     },
     "config": {
