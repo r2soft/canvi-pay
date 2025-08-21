@@ -1,0 +1,23 @@
+stages:
+  - test
+
+before_script:
+  - docker --version
+  - docker info
+
+test-phpunit:
+  stage: test
+  script:
+    - echo "Construindo a imagem Docker..."
+    - docker build -t canvi-pay-tests -f docker/Dockerfile .
+    - echo "Instalando dependências com o composer..."
+    - docker run --rm -v $(pwd):/app -w /app canvi-pay-tests composer install --no-interaction --no-progress --prefer-dist
+    - echo "Executando os testes PHPUnit..."
+    - docker run --rm -v $(pwd):/app -w /app canvi-pay-tests ./vendor/bin/phpunit --testsuite canvi-pay
+  artifacts:
+    when: always
+    paths:
+      - ./build/logs/
+    reports:
+      junit: ./build/logs/junit.xml
+    expire_in: 1 week
