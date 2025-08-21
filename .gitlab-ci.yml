@@ -3,7 +3,7 @@ stages:
 
 before_script:
   - docker --version
-  - docker info
+#  - docker info
 
 test-phpunit:
   stage: test
