@@ -5,16 +5,13 @@ SDK PHP para integração com a API Canvi.
 ## Ambiente de Desenvolvimento
 
 Este projeto inclui um ambiente Docker para desenvolvimento do pacote (SDK), com:
-- PHP 8.1 (contêiner principal)
+- PHP 8.0 (contêiner principal)
 - Composer (container dedicado)
-- Xdebug opcional (para debug CLI)
+- Xdebug opcional (para debug CLI) (caso habilitado no build)
 - PHPUnit para execução de testes
 
 Pré-requisitos
 - Docker e Docker Compose instalados
-
-Estrutura esperada
-- Uso como biblioteca/SDK (sem servidor web). Caso precise testar endpoints (ex.: webhooks), você pode usar um servidor embutido do PHP temporariamente.
 
 Comandos básicos
 
@@ -35,40 +32,28 @@ Comandos básicos
 5) Rodar testes
 
 ```bash
-# Executar todos os testes
-docker compose exec -T php ./vendor/bin/phpunit
+# Executar o script de testes organizado os testes
+sh ./run_tests.sh
+
+# Executar todos os testes a partir do container
+docker exec canvi-php-dev php ./vendor/bin/phpunit
 
 # Executar testes de um diretório específico
-docker compose exec -T php ./vendor/bin/phpunit tests/Services
+docker exec canvi-php-dev php ./vendor/bin/phpunit tests/Services
 
 # Executar um teste específico
-docker compose exec -T php ./vendor/bin/phpunit tests/Services/CanviAuthServiceTest.php
+docker exec canvi-php-dev php ./vendor/bin/phpunit tests/Services/CanviAuthServiceTest.php
 
 # Executar com cobertura de código (requer Xdebug)
-docker compose exec -T php ./vendor/bin/phpunit --coverage-html coverage
+docker exec canvi-php-dev php ./vendor/bin/phpunit --coverage-html coverage
 ```
-
-### Sobre os Testes
-
-O projeto inclui testes unitários e de integração para garantir o funcionamento correto do SDK. Os testes são executados com PHPUnit.
 
 #### Estrutura de Testes
 
 - `tests/`: Contém todos os testes do projeto
   - `Services/`: Testes para os serviços do SDK
-  - `Webhook/`: Testes para validação de webhooks
   - `CanviClientTest.php`: Testes para o cliente principal
   - `SmokeTest.php`: Testes de fumaça para verificação básica
-
-#### Testes no Ambiente Docker
-
-Alguns testes que envolvem manipulação de permissões de arquivos podem não funcionar corretamente no ambiente Docker devido a limitações do sistema de arquivos. Estes testes são automaticamente pulados quando executados em um contêiner Docker.
-
-Os seguintes testes são afetados:
-- `testInvalidStorageDirectory` - Testa o comportamento com diretórios inválidos
-- `testUnwritableStorageDirectory` - Testa o comportamento com diretórios sem permissão de escrita
-
-Para executar todos os testes, incluindo os que envolvem manipulação de permissões, execute-os em um ambiente que não seja Docker.
 
 #### Testes de Integração
 
