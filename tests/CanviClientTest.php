@@ -4,18 +4,6 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientInterface as Psr18Client;
 
-// Autoloader personalizado para depuração
-spl_autoload_register(function ($class) {
-    if (strpos($class, 'R2Soft\\Canvi\\') === 0) {
-        $file = __DIR__ . '/../src/' . str_replace('\\', '/', substr($class, 12)) . '.php';
-        if (file_exists($file)) {
-            require $file;
-            fwrite(STDERR, "Classe carregada: $class de $file\n");
-        } else {
-            fwrite(STDERR, "Arquivo não encontrado para a classe $class: $file\n");
-        }
-    }
-});
 use Psr\Log\LoggerInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
