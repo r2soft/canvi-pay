@@ -14,7 +14,7 @@ test-phpunit:
   stage: test
   script:
     - echo "Iniciando Testes..."
-    - ./run_tests.sh
+    - sudo ./run_tests.sh
   artifacts:
     when: always
     paths:
