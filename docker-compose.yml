@@ -1,5 +1,5 @@
 services:
-  php:
+  dev-canvi-pay:
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -7,7 +7,7 @@ services:
         PHP_VERSION: "8.0"
         ENABLE_XDEBUG: "0" # altere para "1" para habilitar
     image: r2soft-canvi-php:dev
-    container_name: canvi-php
+    container_name: canvi-php-dev
     tty: true
     command: ["sleep", "infinity"]
     working_dir: /app
@@ -24,11 +24,3 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-
-  composer:
-    image: composer:2
-    container_name: canvi-composer
-    working_dir: /app
-    volumes:
-      - ./:/app
-    entrypoint: ["composer"]
