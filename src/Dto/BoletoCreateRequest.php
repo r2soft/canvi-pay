@@ -27,7 +27,8 @@ final class BoletoCreateRequest
         public \DateTimeInterface $vencimento, // Y-m-d
         public string $diasExpirar = '0',
         public array $pagador = [],  // nome, documento, endereco{...}
-        public array $cliente = []  // nome, tipo_documento, numero_documento, e-mail
+        public array $cliente = [],  // nome, tipo_documento, numero_documento, e-mail
+        public array $split = []
     ) {
     }
 
@@ -53,6 +54,7 @@ final class BoletoCreateRequest
             'dias_expirar' => (string) $this->diasExpirar,
             'pagador' => $this->pagador,
             'cliente' => $this->cliente,
+            'split' => $this->split,
         ], fn($v) => $v !== null);
     }
 }
