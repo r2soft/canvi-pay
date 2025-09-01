@@ -6,11 +6,16 @@ ARG ENABLE_XDEBUG=0
 
 # Dependências básicas de build e extensões nativas
 RUN set -eux; \
-    apk add --no-cache git unzip bash autoconf g++ make openssl-dev; \
+    apk add --no-cache unzip bash autoconf g++ make openssl-dev; \
     docker-php-ext-install pcntl; \
     if [ "$ENABLE_XDEBUG" = "1" ]; then \
         pecl install xdebug && docker-php-ext-enable xdebug; \
     fi
+
+# Instalação do Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_HOME=/tmp/composer
 
 # Configurações do PHP
 COPY docker/php_ini_configuration.ini /usr/local/etc/php/conf.d/zz-custom.ini

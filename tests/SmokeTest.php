@@ -1,2 +1,2 @@
 <?php
-namespace R2Soft\Canvi\Tests; class SmokeTest{}
+namespace Tests; class SmokeTest{}
