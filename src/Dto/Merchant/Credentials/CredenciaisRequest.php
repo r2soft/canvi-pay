@@ -13,6 +13,7 @@ final class CredenciaisRequest
 
     public static function fromArray(array $in): self
     {
+        debug('');
         return new self(
             numero_cnpj: isset($in['numero_cnpj']) ? self::digits((string)$in['numero_cnpj']) : null,
             client_id:   isset($in['client_id'])   ? trim((string)$in['client_id']) : null,
