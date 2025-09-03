@@ -435,41 +435,32 @@ class CanviClient implements CanviClientInterface
 
     private function sendJson(string $method, string $path, ?array $json = null, ?string $idempotencyKey = null): array
     {
-        $client = $this->requireHttpClient();
+        $client         = $this->requireHttpClient();
         $requestFactory = $this->requireRequestFactory();
 
         $uri = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
 
         $headers = [
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-            'User-Agent' => $this->userAgent ?? 'r2soft-canvi-php',
+            'Accept'           => 'application/json',
+            'Content-Type'     => 'application/json',
+            'User-Agent'       => $this->userAgent ?? 'r2soft-canvi-php',
             'X-Client-Timeout' => (string)$this->timeout,
         ];
 
         // Skip token for auth requests to prevent infinite loops
         if (!str_ends_with($path, '/token') && !str_ends_with($path, '/token/')) {
-            // Tenta carregar o token do armazenamento
             $token = $this->loadToken();
-
-            // Se não há token ou está expirado, tenta obter um novo
             if (($this->isTokenExpired() || $token === null) && !empty($this->apiKey) && !empty($this->apiSecret)) {
-
-                // Chama o endpoint de autenticação diretamente
-                $token = $this->authenticate(
-                    '/bt/token',
-                    [
-                        'client_id' => $this->apiKey,
-                        'private_key' => $this->apiSecret
-                    ]
-                );
+                $token = $this->authenticate('/bt/token', [
+                    'client_id'   => $this->apiKey,
+                    'private_key' => $this->apiSecret
+                ]);
             }
-
-            // Only add Authorization header if we have a token
             if (!empty($token)) {
                 $headers['Authorization'] = 'Bearer ' . $token;
             }
         }
+
         if ($idempotencyKey) {
             $headers['Idempotency-Key'] = $idempotencyKey;
         }
@@ -480,6 +471,7 @@ class CanviClient implements CanviClientInterface
             $encoded = json_encode($json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $body = $streamFactory->createStream($encoded);
         }
+
         $request = $requestFactory->createRequest($method, $uri);
         foreach ($headers as $k => $v) {
             $request = $request->withHeader($k, $v);
@@ -488,60 +480,66 @@ class CanviClient implements CanviClientInterface
             $request = $request->withBody($body);
         }
 
-
         $attempts = 0;
         while ($attempts <= $this->maxRetries) {
             $attempts++;
             try {
                 $response = $client->sendRequest($request);
-                $status = $response->getStatusCode();
-                $raw = (string)$response->getBody();
-                $data = $this->decodeJsonSafely($raw);
+                $status   = $response->getStatusCode();
+                $raw      = (string)$response->getBody();
 
-                if ($status >= 200 && $status < 300) {
-                    if (is_array($data) && array_key_exists('data', $data)) {
-                        return $data['data'];
-                    }
-                    return $data ?? [];
+                // 204 No Content => array vazio
+                if ($status === 204 || $raw === '') {
+                    return [];
                 }
 
-                $ex = $this->mapApiError($data, $status, $path);
+                $decoded    = $this->decodeJsonSafely($raw);
+                $normalized = $this->normalizeDecoded($decoded, $raw); // <-- SEMPRE array
+
+                if ($status >= 200 && $status < 300) {
+                    if (isset($normalized['data']) && is_array($normalized['data'])) {
+                        return $normalized['data'];
+                    }
+                    return $normalized;
+                }
+
+                // Erro: normalize também, para mapApiError não receber escalar
+                $ex = $this->mapApiError($normalized, $status, $path);
+
                 $this->logger?->warning('Canvi API error', [
                     'method' => $method,
-                    'path' => $path,
+                    'path'   => $path,
                     'status' => $status,
-                    'error' => $ex->getMessage(),
+                    'error'  => $ex->getMessage(),
                 ]);
 
                 if (!$this->shouldRetry($response)) {
                     $this->logger?->error('API request failed after retries', [
-                        'error' => $ex->getMessage(),
-                        'status' => $status,
+                        'error'   => $ex->getMessage(),
+                        'status'  => $status,
                         'attempt' => $attempts
                     ]);
                     throw $ex;
                 }
                 usleep($this->retryDelayMs * 1000);
+
             } catch (\R2Soft\Canvi\Exceptions\ValidationException $e) {
-                // Propaga exceções de validação sem encapsular
                 throw $e;
             } catch (ApiException $e) {
-                // Deixa exceções da hierarquia ApiException passarem sem encapsular
                 throw $e;
             } catch (\Throwable $e) {
                 $this->logger?->error('Canvi HTTP error', [
                     'method' => $method,
-                    'path' => $path,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'path'   => $path,
+                    'error'  => $e->getMessage(),
+                    'trace'  => $e->getTraceAsString()
                 ]);
 
-                // Log the response details if available
                 if (isset($response)) {
                     $this->logger?->error('Response details', [
-                        'status' => $response->getStatusCode(),
+                        'status'  => $response->getStatusCode(),
                         'headers' => $response->getHeaders(),
-                        'body' => (string)$response->getBody()
+                        'body'    => (string)$response->getBody()
                     ]);
                 }
 
@@ -558,10 +556,29 @@ class CanviClient implements CanviClientInterface
             return null;
         }
         try {
-            return json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            return json_decode($raw, true, 512, JSON_THROW_ON_ERROR); // assoc=true
         } catch (\JsonException) {
-            return null;
+            return null; // não-JSON
         }
+    }
+
+    /**
+     * Normaliza o retorno para SEMPRE ser array.
+     * - Se $decoded é array: retorna como está.
+     * - Se $decoded é escalar/bool/null mas JSON válido: ['value' => $decoded]
+     * - Se não é JSON: ['raw' => $raw]
+     */
+    private function normalizeDecoded(mixed $decoded, string $raw): array
+    {
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+        // "null" JSON (literal) ou escalares válidos
+        if ($decoded !== null || trim($raw) === 'null') {
+            return ['value' => $decoded];
+        }
+        // Não-JSON (ex.: text/plain OK)
+        return ['raw' => $raw];
     }
 
 

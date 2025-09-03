@@ -1,0 +1,30 @@
+stages:
+  - test
+
+before_script:
+  - docker --version
+  - chmod +x ./run_tests.sh
+  - sudo chown -R gitlab-runner:gitlab-runner ./
+#  - docker info
+
+after_script:
+  - sudo chown -R gitlab-runner:gitlab-runner ./
+
+test-phpunit:
+  stage: test
+  script:
+    - echo "Iniciando Testes..."
+    - sudo ./run_tests.sh 0
+  artifacts:
+    when: always
+    paths:
+      - report.xml
+    reports:
+      junit: report.xml
+#  artifacts:
+#    when: always
+#    paths:
+#      - ./build/logs/
+#    reports:
+#      junit: ./build/logs/junit.xml
+#    expire_in: 1 week

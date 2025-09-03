@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace R2Soft\Canvi\Tests\Services;
+namespace Tests\Services;
 
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -85,11 +85,12 @@ class CanviBoletoServiceTest extends TestCase
         ];
 
         $this->clientMock->expects($this->once())
-            ->method('get')
-            ->with("/bt/consulta_boleto/{$chargeId}")
+            ->method('post')
+            ->with("/bt/consulta_boleto", ['identificador_externo' => $chargeId])
             ->willReturn($expectedResponse);
 
         $result = $this->boletoService->get($chargeId);
+
         $this->assertSame($expectedResponse, $result);
     }
 
@@ -104,7 +105,7 @@ class CanviBoletoServiceTest extends TestCase
 
         $this->clientMock->expects($this->once())
             ->method('post')
-            ->with("/bt/cancelar_boleto/{$chargeId}/cancel", [])
+            ->with("/bt/cancelar_boleto", ['id_boleto' => $chargeId])
             ->willReturn($expectedResponse);
 
         $result = $this->boletoService->cancel($chargeId);
