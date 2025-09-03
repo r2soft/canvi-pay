@@ -18,7 +18,7 @@ final class TokenStorage
         if (empty($identifier)) {
             throw new \InvalidArgumentException('O identificador não pode ser vazio');
         }
-        
+
         $this->storagePath = $storagePath ?? sys_get_temp_dir();
         $this->identifier = $identifier;
 
@@ -60,7 +60,9 @@ final class TokenStorage
 
     private function loadAllTokens(): array
     {
-        @mkdir($this->storagePath, 0700, true);
+        if (!is_dir($this->storagePath)) {
+            @mkdir($this->storagePath, 0700, true);
+        }
         $file = $this->getTokenFilePath();
         if (!file_exists($file)) {
             return [];
@@ -68,25 +70,25 @@ final class TokenStorage
 
         try {
             $fh = $this->openWithLock($file, 'r');
-            
+
             if (!flock($fh, LOCK_SH)) {
                 throw new TokenStorageException('Failed to acquire shared lock on token file');
             }
-            
+
             $json = stream_get_contents($fh) ?: '{}';
-            
+
             // Tenta decodificar o JSON, se falhar, retorna array vazio
             $data = json_decode($json, true);
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 // Se o JSON for inválido, remove o arquivo corrompido
                 fclose($fh);
                 @unlink($file);
                 return [];
             }
-            
+
             return is_array($data) ? $data : [];
-            
+
         } catch (\Exception $e) {
             // Em caso de erro, remove o arquivo corrompido
             @unlink($file);
@@ -122,24 +124,24 @@ final class TokenStorage
     {
         try {
             $tokens = $this->loadAllTokens();
-            
+
             if (!isset($tokens[$this->identifier])) {
                 return null;
             }
-            
+
             $tokenData = $tokens[$this->identifier];
-            
+
             if (!is_array($tokenData) || !isset($tokenData['token']) || !isset($tokenData['expires_at'])) {
                 $this->clearToken();
                 return null;
             }
-            
-            // Verifica se o token expirou
-            if ($tokenData['expires_at'] < (time() - self::TOKEN_EXPIRATION_MARGIN)) {
+
+            // Verifica se o token expirou ou está perto de expirar
+            if (time() > ($tokenData['expires_at'] - self::TOKEN_EXPIRATION_MARGIN)) {
                 $this->clearToken();
                 return null;
             }
-            
+
             return $tokenData;
         } catch (\Throwable $e) {
             // Em caso de qualquer erro, limpa o token e retorna null
@@ -153,26 +155,26 @@ final class TokenStorage
         if (empty($token)) {
             throw new \InvalidArgumentException('O token não pode ser vazio');
         }
-        
+
         if ($expiresIn <= 0) {
             throw new \InvalidArgumentException('O tempo de expiração deve ser maior que zero');
         }
-        
+
         $tokens = $this->loadAllTokens();
-        
+
         $tokens[$this->identifier] = [
             'token' => $token,
             'expires_at' => time() + $expiresIn,
             'created_at' => time(),
         ];
-        
+
         $this->saveAllTokens($tokens);
     }
 
     public function clearToken(): void
     {
         $tokens = $this->loadAllTokens();
-        
+
         if (isset($tokens[$this->identifier])) {
             unset($tokens[$this->identifier]);
             $this->saveAllTokens($tokens);

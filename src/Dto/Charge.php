@@ -4,8 +4,8 @@ namespace R2Soft\Canvi\Dto;
 final class Charge implements \JsonSerializable
 {
     public function __construct(
-        public readonly int $amount,               // em centavos
-        public readonly ?string $description = null
+        public int $amount,               // em centavos
+        public ?string $description = null
     ) {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('amount deve ser > 0');

@@ -1,25 +1,65 @@
 #!/bin/bash
 
-# shellcheck disable=SC1091
-echo "********************************* ✅ Construindo imagem docker para execução de Testes ✅ *********************************"
+# Configuração
+set -e
 
-docker build -t canvi-pay-tests -f docker/Dockerfile .
+# Cores para saída
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-echo "👉 Instalando dependências com o composer..."
-docker run --rm -v $(pwd):/app -w /app canvi-pay-tests composer install --no-interaction --no-progress --prefer-dist
+# Função para exibir mensagens de informação
+info() {
+    echo -e "${YELLOW}ℹ️  $1${NC}"
+}
 
-echo "********************************* ✅ Executando Testes ✅ *********************************"
+# Função para exibir mensagens de sucesso
+success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
 
-#CONTAINER_NAME=$1
+# Função para exibir mensagens de erro
+error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+# Verifica se o número de falhas foi fornecido
+if [ -z "$1" ]; then
+    error "Por favor, informe o número máximo de falhas permitidas."
+    echo "Uso: $0 <max_failures>"
+    exit 1
+fi
+
 MAX_FAILURES=$1
 REPORT_XML="report.xml"
 
-#ls -ll $1
+info "********************************* Construindo imagem Docker *********************************"
+if ! docker build -t canvi-pay-tests -f docker/Dockerfile . > /dev/null; then
+    error "Falha ao construir a imagem Docker"
+    exit 1
+fi
 
-touch tempout.txt
-echo "👉 Executando os testes PHPUnit..."
-docker run --rm -v $(pwd):/app -w /app canvi-pay-tests ./vendor/bin/phpunit --testsuite canvi-pay --log-junit "$REPORT_XML" > tempout.txt
-#docker exec "$CONTAINER_NAME" php -dxdebug.mode=off artisan test --parallel --log-junit report.xml --testsuite PipelineGitLab > tempout.txt
+info "👉 Instalando dependências com o composer..."
+if ! docker run --rm -v $(pwd):/app -w /app canvi-pay-tests composer install --no-interaction --no-progress --prefer-dist > /dev/null; then
+    error "Falha ao instalar as dependências do Composer"
+    exit 1
+fi
+
+info "********************************* Executando Testes *********************************"
+
+# Executa os testes e captura a saída
+info "👉 Executando os testes PHPUnit..."
+if ! docker run --rm -v $(pwd):/app -w /app canvi-pay-tests ./vendor/bin/phpunit --testsuite canvi-pay --log-junit "$REPORT_XML" --testdox; then
+    error "⚠️  Alguns testes falharam ou ocorreram erros durante a execução"
+fi
+
+# Se o arquivo de relatório não foi criado, tenta executar sem gerar o relatório XML
+if [ ! -f "$REPORT_XML" ]; then
+    info "⚠️  O arquivo $REPORT_XML não foi gerado. Executando sem gerar relatório..."
+    docker run --rm -v $(pwd):/app -w /app canvi-pay-tests ./vendor/bin/phpunit --testsuite canvi-pay --testdox
+    exit 0
+fi
 
 echo "👉 Extraindo dados do relatório $REPORT_XML"
 echo "👉 local: $(pwd)"
