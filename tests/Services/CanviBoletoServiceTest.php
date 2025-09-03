@@ -85,11 +85,12 @@ class CanviBoletoServiceTest extends TestCase
         ];
 
         $this->clientMock->expects($this->once())
-            ->method('get')
-            ->with("/bt/consulta_boleto/{$chargeId}")
+            ->method('post')
+            ->with("/bt/consulta_boleto", ['identificador_externo' => $chargeId])
             ->willReturn($expectedResponse);
 
         $result = $this->boletoService->get($chargeId);
+
         $this->assertSame($expectedResponse, $result);
     }
 
@@ -104,7 +105,7 @@ class CanviBoletoServiceTest extends TestCase
 
         $this->clientMock->expects($this->once())
             ->method('post')
-            ->with("/bt/cancelar_boleto/{$chargeId}/cancel", [])
+            ->with("/bt/cancelar_boleto", ['id_boleto' => $chargeId])
             ->willReturn($expectedResponse);
 
         $result = $this->boletoService->cancel($chargeId);
