@@ -28,7 +28,7 @@ final class BoletoCreateRequest
         public string $diasExpirar = '0',
         public array $pagador = [],  // nome, documento, endereco{...}
         public array $cliente = [],  // nome, tipo_documento, numero_documento, e-mail
-        public array $split = []
+        public ?array $split = null
     ) {
     }
 

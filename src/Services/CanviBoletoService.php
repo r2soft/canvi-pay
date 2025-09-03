@@ -50,9 +50,9 @@ class CanviBoletoService implements BoletoServiceInterface
      */
     public function get(string $chargeId): array
     {
-        $this->logger?->debug('Consultando boleto', ['id_boleto' => $chargeId]);
+        $this->logger?->debug('Consultando boleto', ['identificador_externo' => $chargeId]);
 
-        return $this->client->post("/bt/consulta_boleto", ['id_boleto' => $chargeId]);
+        return $this->client->post("/bt/consulta_boleto", ['identificador_externo' => $chargeId]);
     }
 
     /**
@@ -66,7 +66,7 @@ class CanviBoletoService implements BoletoServiceInterface
     {
         $this->logger?->debug('Cancelando boleto', ['charge_id' => $chargeId]);
 
-        return $this->client->post("/bt/cancelar_boleto/{$chargeId}/cancel", []);
+        return $this->client->post("/bt/cancelar_boleto", ['id_boleto' => $chargeId]);
     }
 
     /**
