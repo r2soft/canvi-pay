@@ -103,7 +103,9 @@ final class TokenStorage
 
     private function saveAllTokens(array $tokens): void
     {
-        @mkdir($this->storagePath, 0700, true);
+        if (!is_dir($this->storagePath)) {
+            @mkdir($this->storagePath, 0700, true);
+        }
         $file = $this->storagePath . DIRECTORY_SEPARATOR . self::TOKEN_FILENAME;
 
         $fh = $this->openWithLock($file, 'c+');
@@ -174,7 +176,6 @@ final class TokenStorage
     public function clearToken(): void
     {
         $tokens = $this->loadAllTokens();
-
         if (isset($tokens[$this->identifier])) {
             unset($tokens[$this->identifier]);
             $this->saveAllTokens($tokens);

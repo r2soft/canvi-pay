@@ -31,7 +31,7 @@ final class CanviMerchantService
             'payload'          => $this->sanitizePayload($payload),
             'idempotency_key'  => $idempotencyKey,
         ]);
-//debug(['/ac/comerciante', $payload, $idempotencyKey]);
+
         // Se seu CanviClientInterface já tiver ->put(), use-o; senão use ->request('PUT', ...)
         if (method_exists($this->client, 'put')) {
             /** @phpstan-ignore-next-line */
