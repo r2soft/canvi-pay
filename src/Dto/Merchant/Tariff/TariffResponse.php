@@ -17,7 +17,6 @@ final class TariffResponse implements JsonSerializable
 
     public static function fromApi(array $response): self
     {
-        debug($response);
         $rows = $response['data'] ?? $response['servico'] ?? [];
 
         $items = [];
