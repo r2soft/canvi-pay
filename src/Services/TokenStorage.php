@@ -176,7 +176,6 @@ final class TokenStorage
     public function clearToken(): void
     {
         $tokens = $this->loadAllTokens();
-
         if (isset($tokens[$this->identifier])) {
             unset($tokens[$this->identifier]);
             $this->saveAllTokens($tokens);
