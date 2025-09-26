@@ -1,54 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="" tests="32" assertions="66" errors="0" warnings="0" failures="0" skipped="2" time="0.082400">
-    <testsuite name="canvi-pay" tests="32" assertions="66" errors="0" warnings="0" failures="0" skipped="2" time="0.082400">
-      <testsuite name="CanviClientTest" file="/app/tests/CanviClientTest.php" tests="2" assertions="5" errors="0" warnings="0" failures="0" skipped="0" time="0.003532">
-        <testcase name="testSuccessEnvelopeReturnsData" class="CanviClientTest" classname="CanviClientTest" file="/app/tests/CanviClientTest.php" line="18" assertions="3" time="0.002438"/>
-        <testcase name="testValidationErrorUsesMensagemAndErros" class="CanviClientTest" classname="CanviClientTest" file="/app/tests/CanviClientTest.php" line="42" assertions="2" time="0.001094"/>
+  <testsuite name="" tests="32" assertions="66" errors="0" warnings="0" failures="0" skipped="2" time="0.056435">
+    <testsuite name="canvi-pay" tests="32" assertions="66" errors="0" warnings="0" failures="0" skipped="2" time="0.056435">
+      <testsuite name="CanviClientTest" file="/app/tests/CanviClientTest.php" tests="2" assertions="5" errors="0" warnings="0" failures="0" skipped="0" time="0.003413">
+        <testcase name="testSuccessEnvelopeReturnsData" class="CanviClientTest" classname="CanviClientTest" file="/app/tests/CanviClientTest.php" line="18" assertions="3" time="0.002357"/>
+        <testcase name="testValidationErrorUsesMensagemAndErros" class="CanviClientTest" classname="CanviClientTest" file="/app/tests/CanviClientTest.php" line="42" assertions="2" time="0.001055"/>
       </testsuite>
-      <testsuite name="Tests\Services\CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" tests="15" assertions="32" errors="0" warnings="0" failures="0" skipped="0" time="0.014918">
-        <testcase name="testGenerateTokenWithDefaultCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="41" assertions="2" time="0.011649"/>
-        <testcase name="testGenerateTokenWithCustomCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="71" assertions="2" time="0.000377"/>
-        <testcase name="testGenerateTokenWithCustomAuthPath" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="91" assertions="2" time="0.000267"/>
-        <testcase name="testGenerateTokenWithCustomExtractor" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="122" assertions="2" time="0.000293"/>
-        <testcase name="testGenerateTokenWithCustomPathInConstructor" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="155" assertions="2" time="0.000195"/>
-        <testcase name="testGenerateTokenWithInvalidCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="188" assertions="2" time="0.000171"/>
-        <testcase name="testGenerateTokenWithNullClientSecret" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="199" assertions="1" time="0.000122"/>
-        <testcase name="testGenerateTokenWithCustomNullCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="213" assertions="2" time="0.000102"/>
-        <testcase name="testGenerateTokenWithEmptyAuthPath" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="226" assertions="2" time="0.000242"/>
-        <testcase name="testGenerateTokenWithNullExtractorResult" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="253" assertions="3" time="0.000389"/>
-        <testsuite name="Tests\Services\CanviAuthServiceTest::testConstructorWithInvalidParams" tests="4" assertions="8" errors="0" warnings="0" failures="0" skipped="0" time="0.000577">
-          <testcase name="testConstructorWithInvalidParams with data set &quot;null clientId and null clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000183"/>
-          <testcase name="testConstructorWithInvalidParams with data set &quot;empty clientId and empty clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000133"/>
-          <testcase name="testConstructorWithInvalidParams with data set &quot;null clientId with clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000133"/>
-          <testcase name="testConstructorWithInvalidParams with data set &quot;clientId with null clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000129"/>
+      <testsuite name="Tests\Services\CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" tests="15" assertions="32" errors="0" warnings="0" failures="0" skipped="0" time="0.007293">
+        <testcase name="testGenerateTokenWithDefaultCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="41" assertions="2" time="0.005837"/>
+        <testcase name="testGenerateTokenWithCustomCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="71" assertions="2" time="0.000103"/>
+        <testcase name="testGenerateTokenWithCustomAuthPath" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="91" assertions="2" time="0.000088"/>
+        <testcase name="testGenerateTokenWithCustomExtractor" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="122" assertions="2" time="0.000113"/>
+        <testcase name="testGenerateTokenWithCustomPathInConstructor" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="155" assertions="2" time="0.000083"/>
+        <testcase name="testGenerateTokenWithInvalidCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="188" assertions="2" time="0.000104"/>
+        <testcase name="testGenerateTokenWithNullClientSecret" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="199" assertions="1" time="0.000075"/>
+        <testcase name="testGenerateTokenWithCustomNullCredentials" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="213" assertions="2" time="0.000050"/>
+        <testcase name="testGenerateTokenWithEmptyAuthPath" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="226" assertions="2" time="0.000111"/>
+        <testcase name="testGenerateTokenWithNullExtractorResult" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="253" assertions="3" time="0.000187"/>
+        <testsuite name="Tests\Services\CanviAuthServiceTest::testConstructorWithInvalidParams" tests="4" assertions="8" errors="0" warnings="0" failures="0" skipped="0" time="0.000300">
+          <testcase name="testConstructorWithInvalidParams with data set &quot;null clientId and null clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000099"/>
+          <testcase name="testConstructorWithInvalidParams with data set &quot;empty clientId and empty clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000070"/>
+          <testcase name="testConstructorWithInvalidParams with data set &quot;null clientId with clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000065"/>
+          <testcase name="testConstructorWithInvalidParams with data set &quot;clientId with null clientSecret&quot;" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="294" assertions="2" time="0.000066"/>
         </testsuite>
-        <testcase name="testGenerateTokenWithApiException" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="353" assertions="4" time="0.000534"/>
+        <testcase name="testGenerateTokenWithApiException" class="Tests\Services\CanviAuthServiceTest" classname="Tests.Services.CanviAuthServiceTest" file="/app/tests/Services/CanviAuthServiceTest.php" line="353" assertions="4" time="0.000242"/>
       </testsuite>
-      <testsuite name="Tests\Services\CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" tests="6" assertions="12" errors="0" warnings="0" failures="0" skipped="0" time="0.001083">
-        <testcase name="testCreateBoleto" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="23" assertions="2" time="0.000506"/>
-        <testcase name="testCreateBoletoWithIdempotencyKey" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="57" assertions="2" time="0.000151"/>
-        <testcase name="testGetBoleto" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="76" assertions="2" time="0.000132"/>
-        <testcase name="testCancelBoleto" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="97" assertions="2" time="0.000103"/>
-        <testcase name="testListBoletos" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="115" assertions="2" time="0.000101"/>
-        <testcase name="testListBoletosWithoutFilters" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="149" assertions="2" time="0.000091"/>
+      <testsuite name="Tests\Services\CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" tests="6" assertions="12" errors="0" warnings="0" failures="0" skipped="0" time="0.000912">
+        <testcase name="testCreateBoleto" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="23" assertions="2" time="0.000523"/>
+        <testcase name="testCreateBoletoWithIdempotencyKey" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="57" assertions="2" time="0.000074"/>
+        <testcase name="testGetBoleto" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="76" assertions="2" time="0.000066"/>
+        <testcase name="testCancelBoleto" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="97" assertions="2" time="0.000079"/>
+        <testcase name="testListBoletos" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="115" assertions="2" time="0.000089"/>
+        <testcase name="testListBoletosWithoutFilters" class="Tests\Services\CanviBoletoServiceTest" classname="Tests.Services.CanviBoletoServiceTest" file="/app/tests/Services/CanviBoletoServiceTest.php" line="149" assertions="2" time="0.000081"/>
       </testsuite>
-      <testsuite name="Tests\Services\TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" tests="5" assertions="12" errors="0" warnings="0" failures="0" skipped="2" time="0.003243">
-        <testcase name="testSaveAndLoadToken" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="38" assertions="8" time="0.001565"/>
-        <testcase name="testLoadTokenWithInvalidFile" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="59" assertions="2" time="0.000729"/>
-        <testcase name="testClearToken" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="71" assertions="2" time="0.000430"/>
-        <testcase name="testInvalidStorageDirectory" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="86" assertions="0" time="0.000311">
+      <testsuite name="Tests\Services\TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" tests="5" assertions="12" errors="0" warnings="0" failures="0" skipped="2" time="0.002654">
+        <testcase name="testSaveAndLoadToken" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="38" assertions="8" time="0.001013"/>
+        <testcase name="testLoadTokenWithInvalidFile" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="59" assertions="2" time="0.000727"/>
+        <testcase name="testClearToken" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="71" assertions="2" time="0.000494"/>
+        <testcase name="testInvalidStorageDirectory" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="86" assertions="0" time="0.000282">
           <skipped/>
         </testcase>
-        <testcase name="testUnwritableStorageDirectory" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="108" assertions="0" time="0.000207">
+        <testcase name="testUnwritableStorageDirectory" class="Tests\Services\TokenStorageTest" classname="Tests.Services.TokenStorageTest" file="/app/tests/Services/TokenStorageTest.php" line="108" assertions="0" time="0.000136">
           <skipped/>
         </testcase>
       </testsuite>
-      <testsuite name="Tests\WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" tests="4" assertions="5" errors="0" warnings="0" failures="0" skipped="0" time="0.059624">
-        <testcase name="testValidHmac" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="8" assertions="1" time="0.000507"/>
-        <testcase name="testInvalidHmac" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="21" assertions="1" time="0.000136"/>
-        <testcase name="testTimestampOutOfTolerance" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="35" assertions="1" time="0.000054"/>
-        <testcase name="testValidPublicKey" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="49" assertions="2" time="0.058926"/>
+      <testsuite name="Tests\WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" tests="4" assertions="5" errors="0" warnings="0" failures="0" skipped="0" time="0.042163">
+        <testcase name="testValidHmac" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="8" assertions="1" time="0.000601"/>
+        <testcase name="testInvalidHmac" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="21" assertions="1" time="0.000064"/>
+        <testcase name="testTimestampOutOfTolerance" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="35" assertions="1" time="0.000041"/>
+        <testcase name="testValidPublicKey" class="Tests\WebhookValidatorTest" classname="Tests.WebhookValidatorTest" file="/app/tests/WebhookValidatorTest.php" line="49" assertions="2" time="0.041458"/>
       </testsuite>
     </testsuite>
   </testsuite>

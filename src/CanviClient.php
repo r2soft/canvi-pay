@@ -304,7 +304,6 @@ class CanviClient implements CanviClientInterface
         }
     }
 
-
     /**
      * Envia uma requisição POST para a API Canvi.
      *
@@ -395,7 +394,6 @@ class CanviClient implements CanviClientInterface
         }
     }
 
-
     /**
      * Envia uma requisição GET para a API Canvi.
      *
@@ -435,6 +433,8 @@ class CanviClient implements CanviClientInterface
 
     private function sendJson(string $method, string $path, ?array $json = null, ?string $idempotencyKey = null): array
     {
+        $this->ensureValidToken();
+
         $client         = $this->requireHttpClient();
         $requestFactory = $this->requireRequestFactory();
 
@@ -581,7 +581,6 @@ class CanviClient implements CanviClientInterface
         return ['raw' => $raw];
     }
 
-
     /**
      * Converte payload de erro da API em exceções específicas.
      * - 400 com {mensagem, erros} => ValidationException
@@ -680,5 +679,36 @@ class CanviClient implements CanviClientInterface
         if ($code === 429 || $code === 408) return true;
         if ($code >= 500) return true;
         return false;
+    }
+
+    /**
+     * Garante que o token atual é válido.
+     * - Ignora quando o $path alvo é a própria rota de token para evitar loop.
+     * - Se tiver apiKey/apiSecret e existir $tokenProbePath, faz GET nele.
+     *   - 2xx => ok
+     *   - 401 => limpa armazenamento e reautentica
+     * - Se o probe não existir (404) ou a API não expõe rota de ping,
+     *   consideramos ok para não bloquear chamadas.
+     */
+    private function ensureValidToken(): void
+    {
+        $this->loadToken();
+
+        // Faz um GET leve para validar o token atual
+        try {
+            $resp = $this->request('GET', '/bt/saldo');
+            $code = $resp->getStatusCode();
+            if ($code === 401) {
+                // Token inválido no servidor: limpar e renovar
+                $this->logger?->warning('Token inválido no probe; limpando e reautenticando');
+                $this->getTokenStorage()->clearToken();
+            }
+            // 2xx / 404 / outros: segue o jogo. Se for 5xx, não bloqueia a call original.
+        } catch (\Throwable $e) {
+            if ($e->getCode() === 401) {
+                $this->logger?->warning('Token inválido no probe; limpando e reautenticando');
+                $this->getTokenStorage()->clearToken();
+            }
+        }
     }
 }
