@@ -2,7 +2,7 @@
 
 SDK PHP para integração com a API Canvi.
 
-Compatibilidade: PHP 8.0, 8.2 e 8.3 (testes automatizados em matriz GitHub Actions).
+Compatibilidade: PHP 8.0, 8.2 e 8.3 (testes automatizados em matriz GitHub Actions). Dependências PSR-3: `psr/log` ^1.1|^2|^3 (compatível com Monolog 3/Laravel 12).
 
 ## Ambiente de Desenvolvimento
 
