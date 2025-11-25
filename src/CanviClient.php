@@ -10,6 +10,7 @@ use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Log\LoggerInterface;
 use R2Soft\Canvi\Contracts\CanviClientInterface;
+use R2Soft\Canvi\Contracts\TokenStorageInterface;
 use R2Soft\Canvi\Exceptions\ApiException;
 use R2Soft\Canvi\Exceptions\UnauthorizedException;
 use R2Soft\Canvi\Exceptions\ValidationException as FullValidationException;
@@ -32,7 +33,7 @@ use R2Soft\Canvi\Services\TokenStorage;
 class CanviClient implements CanviClientInterface
 {
     private ?string $accessToken = null;
-    private ?TokenStorage $tokenStorage = null;
+    private ?TokenStorageInterface $tokenStorage = null;
     private const TOKEN_EXPIRES_IN = 604800; // 7 dias em segundos
     private const TOKEN_RENEW_BEFORE = 3600; // 1 hora antes de expirar
     private ?Psr18Client $httpClient = null;
@@ -53,6 +54,8 @@ class CanviClient implements CanviClientInterface
      * @param int $maxRetries Número máximo de tentativas em caso de falha
      * @param int $retryDelayMs Tempo de espera entre tentativas em milissegundos
      * @param string $userAgent User-Agent personalizado para as requisições
+     * @param TokenStorageInterface|null $tokenStorage Armazenamento de token (banco, obrigatório)
+     * @param string|null $walletId Identificador da wallet associado ao token (padrão: default)
      * @throws \InvalidArgumentException Se a URL base for inválida
      */
     public function __construct(
@@ -66,13 +69,19 @@ class CanviClient implements CanviClientInterface
         ?StreamFactoryInterface  $streamFactory = null,
         private int              $maxRetries = 0,
         private int              $retryDelayMs = 250,
-        private ?string          $userAgent = 'r2soft-canvi-php/1.x'
+        private ?string          $userAgent = 'r2soft-canvi-php/1.x',
+        ?TokenStorageInterface   $tokenStorage = null,
+        private ?string          $walletId = 'default',
     )
     {
+        if ($this->walletId !== null && $this->walletId === '') {
+            throw new \InvalidArgumentException('O walletId não pode ser vazio');
+        }
         $this->httpClient = $httpClient;
         $this->requestFactory = $requestFactory;
         $this->streamFactory = $streamFactory;
         $this->baseUrl = rtrim($baseUrl, '/');
+        $this->tokenStorage = $tokenStorage;
     }
 
     public function getBaseUri(): string
@@ -231,13 +240,13 @@ class CanviClient implements CanviClientInterface
     /**
      * Obtém a instância do TokenStorage
      */
-    private function getTokenStorage(): TokenStorage
+    private function getTokenStorage(): TokenStorageInterface
     {
         if ($this->tokenStorage === null) {
-            $this->tokenStorage = new TokenStorage(
-                sys_get_temp_dir() . '/canvi-tokens',
+            $this->tokenStorage = TokenStorage::fromEnv(
                 $this->apiKey ?? 'default',
-                $this->logger
+                $this->logger,
+                $this->walletId ?? 'default'
             );
         }
 

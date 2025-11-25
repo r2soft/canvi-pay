@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 use R2Soft\Canvi\CanviClient;
 use R2Soft\Canvi\Exceptions\ValidationException;
+use Tests\Support\InMemoryTokenStorage;
 
 final class CanviClientTest extends TestCase
 {
@@ -30,7 +31,8 @@ final class CanviClientTest extends TestCase
             apiKey: 'x',
             httpClient: $http,
             requestFactory: $factory,
-            streamFactory: $factory
+            streamFactory: $factory,
+            tokenStorage: new InMemoryTokenStorage()
         );
 
         $res = $client->get('/charges/1');
@@ -90,7 +92,8 @@ final class CanviClientTest extends TestCase
             httpClient: $http,
             requestFactory: $factory,
             streamFactory: $factory,
-            logger: null // Desativa o logger para simplificar a saída
+            logger: null, // Desativa o logger para simplificar a saída
+            tokenStorage: new InMemoryTokenStorage()
         );
 
         // Configura as expectativas de exceção

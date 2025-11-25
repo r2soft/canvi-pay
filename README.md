@@ -2,6 +2,8 @@
 
 SDK PHP para integração com a API Canvi.
 
+Compatibilidade: PHP 8.0, 8.2 e 8.3 (testes automatizados em matriz GitHub Actions).
+
 ## Ambiente de Desenvolvimento
 
 Este projeto inclui um ambiente Docker para desenvolvimento do pacote (SDK), com:
@@ -136,6 +138,11 @@ Licença
 
 ---
 
+## Integração contínua
+- Workflow em `.github/workflows/phpunit.yml` roda a suíte de testes em PHP 8.0, 8.2 e 8.3.
+
+---
+
 Integração com a API Canvi (SDK)
 
 URLs Base
@@ -245,3 +252,27 @@ $resp = $boleto->create([/* payload */]);
 Observações
 - Confirme os paths exatos dos endpoints na documentação oficial.
 - Este SDK mapeia erros priorizando mensagem/code e campos de validação em erros/fields.
+
+## Armazenamento de tokens em banco (obrigatório)
+O SDK agora guarda o token de acesso em banco de dados (não há fallback para arquivo). Defina as variáveis de ambiente:
+```
+BD_PJ_HOST=...
+BD_PJ_PORT=...
+BD_PJ_DATABASE=...
+BD_PJ_LOGIN=...
+BD_PJ_PASSWORD=...
+BD_PJ_SCHEMA=public   # opcional
+```
+
+DDL sugerida (PostgreSQL):
+```sql
+CREATE TABLE IF NOT EXISTS <schema>.canvi_tokens (
+    identifier VARCHAR(255) NOT NULL,
+    wallet_id VARCHAR(255) NOT NULL,
+    token TEXT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY (wallet_id)
+);
+```
+O controle é por `wallet_id`: apenas um token por wallet. O `identifier` é armazenado para referência (padrão: `apiKey` ou `default`). Informe o `walletId` no construtor do `CanviClient` (padrão `default`). Múltiplas aplicações/servidores podem compartilhar a tabela desde que usem wallets distintas. Garanta que o usuário do banco tenha permissão de leitura/escrita nessa tabela.
