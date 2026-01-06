@@ -42,6 +42,34 @@ class CanviBoletoService implements BoletoServiceInterface
     }
 
     /**
+     * Ajustar split
+     *
+     * @param array $payload Dados do split
+     * @return array Dados de repasse
+     * @throws ApiException
+     */
+    public function getDadosSplit(array $payload): array
+    {
+        $this->logger?->debug('Criando novo boleto', ['payload' => $this->sanitizePayload($payload)]);
+
+        return $this->client->post('/bt/split/periodo', $payload);
+    }
+
+    /**
+     * Ajustar split
+     *
+     * @param array $payload Dados do split
+     * @return array Dados de repasse
+     * @throws ApiException
+     */
+    public function ajustarSplit(array $payload): array
+    {
+        $this->logger?->debug('Criando novo boleto', ['payload' => $this->sanitizePayload($payload)]);
+
+        return $this->client->post('/bt/split/ajuste', $payload);
+    }
+
+    /**
      * Obtém os dados de um boleto pelo ID
      *
      * @param string $chargeId ID do boleto
