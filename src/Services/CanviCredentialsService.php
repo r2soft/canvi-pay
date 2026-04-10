@@ -66,12 +66,14 @@ final class CanviCredentialsService
     private function buildQuery(array $in): array
     {
         $numeroCnpj = isset($in['numero_cnpj']) ? preg_replace('/\D+/', '', (string)$in['numero_cnpj']) : null;
+        $numeroCpf  = isset($in['numero_cpf'])  ? preg_replace('/\D+/', '', (string)$in['numero_cpf'])  : null;
         $clientId   = isset($in['client_id'])   ? trim((string)$in['client_id']) : null;
         $conta      = isset($in['conta'])       ? trim((string)$in['conta'])     : null;
 
         // remove nulos/vazios
         return array_filter([
             'numero_cnpj' => $numeroCnpj,
+            'numero_cpf'  => $numeroCpf,
             'client_id'   => $clientId,
             'conta'       => $conta,
         ], static fn($v) => $v !== null && $v !== '');
